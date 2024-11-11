@@ -1,0 +1,2 @@
+include fastllm/*.py
+include requirements.txt
