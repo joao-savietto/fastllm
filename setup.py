@@ -6,6 +6,9 @@ setup(
     packages=find_packages(),
     install_requires=[
         # List your dependencies here
+        'numpy',
+        'pandas',
+        # Add more dependencies as needed
     ],
     entry_points={
         'console_scripts': [
