@@ -1,0 +1,21 @@
+.aider*
+.env
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*\$py\$*
+
+# iPython cache
+.ipynb_checkpoints
+
+# macOS specific hidden files
+.*
+!.gitignore
+!.env
+!README.md
+!LICENSE
+.conda
+*.ipynb
+*.egg-
+dist/*
+build/*
