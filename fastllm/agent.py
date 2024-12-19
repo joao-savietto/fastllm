@@ -31,7 +31,7 @@ class Agent:
                 self.tools.append(tool_json)
 
     def generate(self, chat_history: List[Dict[str, Any]],
-                 session_id: str = None,
+                 session_id: str = None, neasted_tool: bool = False,
                  params: Dict[str, Any] = {}) -> Optional[Dict[str, Any]]:
         """
         Generate a response from the OpenAI API based
@@ -51,10 +51,8 @@ class Agent:
         response_message = response_message.choices[0].message
         tool_calls = response_message.tool_calls
         chat_history.append(response_message)
-        steps = 0
         if tool_calls:
             while tool_calls is not None:
-                steps += 1
                 for tool_call in tool_calls:
                     function_name = tool_call.function.name
                     function_to_call = self.tool_map[function_name]
@@ -71,9 +69,17 @@ class Agent:
                         }
                     )
                 args["messages"] = chat_history
+                if neasted_tool is False:
+                    if "tool_choice" in params:
+                        del args["tool_choice"]
+                    if "tools" in params:
+                        del args["tools"]
                 second_response = self.client.chat.completions.create(**args)
                 response_message = second_response.choices[0].message
-                tool_calls = response_message.tool_calls
+                if neasted_tool is True:
+                    tool_calls = response_message.tool_calls
+                else:
+                    tool_calls = None
                 chat_history.append(response_message)
                 if response_message.role == "assistant" and tool_calls is None:
                     yield json.loads(response_message.json())
