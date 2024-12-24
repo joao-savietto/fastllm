@@ -6,6 +6,7 @@ Classes:
     Agent: A class to interact with the OpenAI API for
     generating AI responses.
 """
+
 from typing import List, Optional, Dict, Any
 import json
 import openai
@@ -16,9 +17,13 @@ class Agent:
     Agent class for interacting with the OpenAI API.
     """
 
-    def __init__(self, model: str = "got4o",
-                 base_url: str = "https://api.openai.com/v1/",
-                 api_key: str = "", tools: list = None) -> None:
+    def __init__(
+        self,
+        model: str = "got4o",
+        base_url: str = "https://api.openai.com/v1/",
+        api_key: str = "",
+        tools: list = None,
+    ) -> None:
         self.client = openai.OpenAI(base_url=base_url, api_key=api_key)
         self.model = model
         self.tools = None
@@ -30,19 +35,19 @@ class Agent:
                 self.tool_map[tool_json["function"]["name"]] = tool
                 self.tools.append(tool_json)
 
-    def generate(self, chat_history: List[Dict[str, Any]],
-                 session_id: str = None, neasted_tool: bool = False,
-                 params: Dict[str, Any] = {}) -> Optional[Dict[str, Any]]:
+    def generate(
+        self,
+        chat_history: List[Dict[str, Any]],
+        session_id: str = None,
+        neasted_tool: bool = False,
+        params: Dict[str, Any] = {},
+    ) -> Optional[Dict[str, Any]]:
         """
         Generate a response from the OpenAI API based
          on the chat history and parameters
 
         """
-        args = {
-            "messages": chat_history,
-            "model": self.model,
-            **params
-        }
+        args = {"messages": chat_history, "model": self.model, **params}
         if self.tools is not None:
             args["tool_choice"] = "auto"
             args["tools"] = self.tools
@@ -58,8 +63,7 @@ class Agent:
                     function_to_call = self.tool_map[function_name]
                     function_args = json.loads(tool_call.function.arguments)
 
-                    function_response =\
-                        function_to_call.execute(**function_args)
+                    function_response = function_to_call.execute(**function_args)
                     chat_history.append(
                         {
                             "tool_call_id": tool_call.id,

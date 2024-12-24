@@ -18,19 +18,16 @@ def tool(description: str, pydantic_model: type):
             },
         }
 
-        for param, details in pydantic_schema['properties'].items():
-            openai_format_schema["parameters"]['properties'][param] = {
-                "type": details.get('type', 'string'),
-                "description": details.get('description', '')
+        for param, details in pydantic_schema["properties"].items():
+            openai_format_schema["parameters"]["properties"][param] = {
+                "type": details.get("type", "string"),
+                "description": details.get("description", ""),
             }
-            if param in pydantic_schema['required']:
-                openai_format_schema["parameters"]['required'].append(param)
+            if param in pydantic_schema["required"]:
+                openai_format_schema["parameters"]["required"].append(param)
 
         def tool_json():
-            schema = {
-                "type": "function",
-                "function": openai_format_schema
-            }
+            schema = {"type": "function", "function": openai_format_schema}
             return schema
 
         @wraps(func)
