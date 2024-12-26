@@ -28,6 +28,7 @@ class Node:
         message_to_send: Union[str, dict] = None,
         on_generate: callable = None,
         before_generate: callable = None,
+        temperature: float = 0.7,
     ):
         self.store = store if store is not None else {}
         self.next_nodes = next_nodes if next_nodes is not None else []
@@ -37,6 +38,7 @@ class Node:
         self.message_to_send = message_to_send
         self.on_generate = on_generate
         self.before_generate = before_generate
+        self.temperature = temperature
 
     def run(self):
         """
@@ -59,7 +61,8 @@ class Node:
                 self.messages.append(self.message_to_send)
             responses = []
             for response in self.agent.generate(
-                self.messages, neasted_tool=self.neasted_tool
+                self.messages, neasted_tool=self.neasted_tool,
+                params={"temperature":self.temperature}
             ):
                 responses.append(response)
             if self.on_generate is not None:
