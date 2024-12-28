@@ -49,14 +49,15 @@ class Node:
             The final response from the LLM after all transitions are completed.
         """  # noqa: E501
         if self.message_to_send:
-            if self.before_generate is not None:
-                self.before_generate(self)
             if isinstance(self.message_to_send, str):
                 self.messages.append({
                     "role": "user",
                     "content": self.message_to_send})
             elif isinstance(self.message_to_send, dict):
                 self.messages.append(self.message_to_send)
+        if self.before_generate is not None:
+            self.before_generate(self)                
+        if self.agent:
             responses = []
             for response in self.agent.generate(
                 self.messages, neasted_tool=self.neasted_tool,
@@ -65,9 +66,9 @@ class Node:
                 responses.append(response)
             if self.on_generate is not None:
                 self.on_generate(self)
-        for next_node in self.next_nodes:
-            next_node.messages = responses
-            next_node.run()
+            for next_node in self.next_nodes:
+                next_node.messages = responses
+                next_node.run()
 
     def connect_to(self, node):
         """Connect this node to another node."""
