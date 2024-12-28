@@ -9,7 +9,6 @@ class Node:
 
     Attributes:
         store (dict): Store for additional information. Default is None.
-        next_nodes (list of Node): List of nodes that this node can transition to. Default is an empty list.
         messages (list): A list containing the messages to be sent to the LLM. Default is an empty list.
         agent (Agent): The agent object used for generating responses from the LLM.
         neasted_tool (bool): Indicates whether a nested tool is being used. Default is None.
@@ -21,7 +20,6 @@ class Node:
     def __init__(
         self,
         store: dict = None,
-        next_nodes: "Node" = None,
         messages: dict = None,
         agent: Agent = None,
         neasted_tool: bool = None,
@@ -31,7 +29,7 @@ class Node:
         temperature: float = 0.7,
     ):
         self.store = store if store is not None else {}
-        self.next_nodes = next_nodes if next_nodes is not None else []
+        self.next_nodes = []
         self.messages = messages if messages is not None else []
         self.agent = agent
         self.neasted_tool = neasted_tool
@@ -102,8 +100,6 @@ class BooleanNode:
         on_generate: callable = None,
         before_generate: callable = None,
         condition: callable = None,
-        true_nodes: List["Node"] = [],
-        false_nodes: List["Node"] = [],
     ):
         self.store = store if store is not None else {}
         self.messages = messages if messages is not None else []
@@ -113,8 +109,8 @@ class BooleanNode:
         self.on_generate = on_generate
         self.before_generate = before_generate
         self.condition = condition
-        self.true_nodes = true_nodes
-        self.false_nodes = false_nodes
+        self.true_nodes = []
+        self.false_nodes = []
 
     def run(self):
         """
@@ -125,13 +121,15 @@ class BooleanNode:
         Returns:
             The final response from the LLM after all transitions are completed.
         """  # noqa: E501
-        self.before_generate(self)
+        if self.before_generate:
+            self.before_generate(self)
         nodes = self.true_nodes if self.condition(self) else self.false_nodes
         for next_node in nodes:
             next_node.messages = self.messages
             next_node.store = self.store
             next_node.run()
-        self.on_generate(self)
+        if self.on_generate:
+            self.on_generate(self)
 
     def connect_to_false(self, node):
         """Connect this node to another node if the condition is False."""
