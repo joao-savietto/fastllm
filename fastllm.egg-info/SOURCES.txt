@@ -1,0 +1,15 @@
+LICENSE
+MANIFEST.in
+README.md
+requirements.txt
+setup.py
+fastllm/__init__.py
+fastllm/agent.py
+fastllm/decorators.py
+fastllm/prompts.py
+fastllm/workflow.py
+fastllm.egg-info/PKG-INFO
+fastllm.egg-info/SOURCES.txt
+fastllm.egg-info/dependency_links.txt
+fastllm.egg-info/requires.txt
+fastllm.egg-info/top_level.txt

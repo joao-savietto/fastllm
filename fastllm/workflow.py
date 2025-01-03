@@ -1,4 +1,4 @@
-from typing import Union, List
+from typing import Union
 
 from .agent import Agent
 
@@ -56,12 +56,12 @@ class Node:
             elif isinstance(self.message_to_send, dict):
                 self.messages.append(self.message_to_send)
         if self.before_generate is not None:
-            self.before_generate(self)                
+            self.before_generate(self)
         if self.agent:
             responses = []
             for response in self.agent.generate(
                 self.messages, neasted_tool=self.neasted_tool,
-                params={"temperature":self.temperature}
+                params={"temperature": self.temperature}
             ):
                 responses.append(response)
             if self.on_generate is not None:

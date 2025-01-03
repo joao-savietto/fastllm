@@ -7,9 +7,12 @@ Classes:
     generating AI responses.
 """
 
-from typing import List, Optional, Dict, Any
 import json
+from typing import Any, Dict, List, Optional
+
 import openai
+
+from fastllm.store import ChatStorageInterface
 
 
 class Agent:
@@ -23,6 +26,7 @@ class Agent:
         base_url: str = "https://api.openai.com/v1/",
         api_key: str = "",
         tools: list = None,
+        system_prompt: str = ""
     ) -> None:
         self.client = openai.OpenAI(base_url=base_url, api_key=api_key)
         self.model = model
@@ -34,6 +38,7 @@ class Agent:
                 tool_json = tool.tool_json()
                 self.tool_map[tool_json["function"]["name"]] = tool
                 self.tools.append(tool_json)
+        self.system_prompt = system_prompt
 
     def generate(
         self,
@@ -63,7 +68,8 @@ class Agent:
                     function_to_call = self.tool_map[function_name]
                     function_args = json.loads(tool_call.function.arguments)
 
-                    function_response = function_to_call.execute(**function_args)
+                    function_response =\
+                        function_to_call.execute(**function_args)
                     chat_history.append(
                         {
                             "tool_call_id": tool_call.id,

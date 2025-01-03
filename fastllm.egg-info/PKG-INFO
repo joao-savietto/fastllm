@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: fastllm
+Version: 0.1
+License-File: LICENSE
+Requires-Dist: openai==1.53.0
+Requires-Dist: chromadb==0.5.16
+Requires-Dist: rich==13.9.4
