@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 
 import openai
 
-from fastllm.store import ChatStorageInterface
+from fastllm.store import ChatStorageInterface, InMemoryChatStorage
 
 
 class Agent:
@@ -26,7 +26,8 @@ class Agent:
         base_url: str = "https://api.openai.com/v1/",
         api_key: str = "",
         tools: list = None,
-        system_prompt: str = ""
+        system_prompt: str = "",
+        store: ChatStorageInterface = None
     ) -> None:
         self.client = openai.OpenAI(base_url=base_url, api_key=api_key)
         self.model = model
@@ -39,11 +40,14 @@ class Agent:
                 self.tool_map[tool_json["function"]["name"]] = tool
                 self.tools.append(tool_json)
         self.system_prompt = system_prompt
+        if store is None:
+            self.store = InMemoryChatStorage()
+        self.store = InMemoryChatStorage()
 
     def generate(
         self,
-        chat_history: List[Dict[str, Any]],
-        session_id: str = None,
+        message: str,
+        session_id: str = "default",
         neasted_tool: bool = False,
         params: Dict[str, Any] = {},
     ) -> Optional[Dict[str, Any]]:
@@ -52,7 +56,19 @@ class Agent:
          on the chat history and parameters
 
         """
-        args = {"messages": chat_history, "model": self.model, **params}
+        if len(self.store.get_all(session_id)) == 0:
+            sys = {
+                "role": "system",
+                "content": self.system_prompt
+            }
+            self.store.save(sys)
+
+        self.store.save({"role": "user", "content": message})
+
+        args = {
+            "messages": self.store.get_all(session_id),
+            "model": self.model, **params
+            }
         if self.tools is not None:
             args["tool_choice"] = "auto"
             args["tools"] = self.tools
@@ -60,7 +76,7 @@ class Agent:
         response_message = self.client.chat.completions.create(**args)
         response_message = response_message.choices[0].message
         tool_calls = response_message.tool_calls
-        chat_history.append(response_message)
+        self.store.save(response_message, session_id)
         if tool_calls:
             while tool_calls is not None:
                 for tool_call in tool_calls:
@@ -70,15 +86,17 @@ class Agent:
 
                     function_response =\
                         function_to_call.execute(**function_args)
-                    chat_history.append(
+                    self.store.save(
                         {
                             "tool_call_id": tool_call.id,
                             "role": "tool",
                             "name": function_name,
                             "content": function_response,
-                        }
+                        },
+                        session_id
                     )
-                args["messages"] = chat_history
+
+                args["messages"] = self.store.get_all(session_id)
                 if neasted_tool is False:
                     if "tool_choice" in params:
                         del args["tool_choice"]
@@ -90,7 +108,7 @@ class Agent:
                     tool_calls = response_message.tool_calls
                 else:
                     tool_calls = None
-                chat_history.append(response_message)
+                self.store.save(response_message, session_id)
                 if response_message.role == "assistant" and tool_calls is None:
                     yield json.loads(response_message.json())
         else:

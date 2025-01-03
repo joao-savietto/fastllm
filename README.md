@@ -42,24 +42,14 @@ def sum_numbers(num1, num2):
     return {"result": num1 + num2}
 
 agent = Agent(
-               model="qwen2.5-coder:7b-instruct-q8_0",
+               model="qwen2.5:14b-instruct-q6_K",
                base_url="http://localhost:11434/v1",
                api_key="ollama",
                tools=[sum_numbers],
+               system_prompt="You are a helpful assistant"
             )
 
-messages = [
-    {
-        "role": "system",
-        "content": "You are a helpful assistant."
-    },
-    {
-        "role": "user",
-        "content": "Calculate 1900 + 191"
-    }
-]
-
-for message in agent.generate(messages):
+for message in agent.generate("Calculate 1900 + 191"):
     print(message)
 ```
 
