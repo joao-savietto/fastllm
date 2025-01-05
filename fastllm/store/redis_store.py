@@ -14,7 +14,7 @@ class RedisChatStorage(ChatStorageInterface):
         """Save a chat message to storage."""
         # Get the existing list of messages for this user
         if not isinstance(message, dict):
-            message = message.dict()        
+            message = message.dict()
         existing_messages = self.get_all(session_id)
 
         # Append the new message to the list and store it back in Redis
@@ -30,3 +30,12 @@ class RedisChatStorage(ChatStorageInterface):
             return []
 
         return json.loads(messages_json.decode("utf-8"))
+
+    def del_session(self, session_id: str = "default"):
+        """Delete all messages of the specified session."""
+        self.redis_client.delete(session_id)
+
+    def del_all_sessions(self):
+        """Clear all sessions and their corresponding messages from storage."""
+        for key in self.redis_client.scan_iter("*"):
+            self.redis_client.delete(key)

@@ -1,5 +1,6 @@
 import json
 from functools import wraps
+import threading
 
 
 def tool(description: str, pydantic_model: type):
@@ -42,3 +43,9 @@ def tool(description: str, pydantic_model: type):
         return func
 
     return decorator
+
+
+def run_in_thread(func):
+    def wrapper(*args, **kwargs):
+        threading.Thread(target=func, args=args, kwargs=kwargs).start()
+    return wrapper

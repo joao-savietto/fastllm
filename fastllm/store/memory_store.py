@@ -19,3 +19,12 @@ class InMemoryChatStorage(ChatStorageInterface):
     def get_all(self, session_id: str = "default") -> List[dict]:
         """Retrieve all messages for a specific user from storage."""
         return self.storage.get(session_id, [])
+
+    def del_session(self, session_id: str = "default"):
+        """Delete all messages of the specified session."""
+        if session_id in self.storage:
+            del self.storage[session_id]
+
+    def del_all_sessions(self):
+        """Clear all sessions and their corresponding messages from storage."""
+        self.storage.clear()
