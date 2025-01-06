@@ -7,7 +7,7 @@ class ChatStorageInterface(ABC):
         """Save a chat message to storage."""
         pass
 
-    @abstractmethod
+    # @abstractmethod
     def get_all(self, session_id: str = "default") -> list[dict]:
         """Retrieve all messages for a specific user from storage."""
         pass

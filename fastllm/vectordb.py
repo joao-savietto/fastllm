@@ -6,9 +6,10 @@ import uuid
 class VectorDB:
 
     def __init__(self,
-                 embedder_model: str = "distiluse-base-multilingual-cased-v2"
+                 embedder_model: str = "distiluse-base-multilingual-cased-v2",
+                 path: str = "data/"
                  ):
-        self.path = "data/"
+        self.path = path
         self.em = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name=embedder_model
         )

@@ -147,7 +147,7 @@ class PageScraper:
             clean_pages.append(text)
         return clean_pages
 
-    @run_in_thread
+    # @run_in_thread
     def run(self):
         self._scrap()
         self.texts = self._clean_text()
