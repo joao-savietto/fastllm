@@ -15,7 +15,7 @@ def longest_repeated_substring(s: str) -> str:
     def is_repeated_substring(length: int) -> str:
         substrings = set()
         for i in range(len(s) - length + 1):
-            substr = s[i: i + length]
+            substr = s[i : i + length]
             if substr in substrings:
                 return substr
             substrings.add(substr)
@@ -63,11 +63,7 @@ def find_urls(text: str) -> List[str]:
 
 
 class PageScraper:
-    def __init__(
-        self,
-        base_url: str, page_name: str,
-        vector_db: VectorDB
-    ):
+    def __init__(self, base_url: str, page_name: str, vector_db: VectorDB):
         self.base_url = base_url
         self.page_name = page_name
         self.visited = set()
@@ -107,8 +103,7 @@ class PageScraper:
             href = link.get("href")
             if href:
                 if href.startswith("http") and (
-                    not href.startswith(url) or
-                        href == url or href == f"{url}#"
+                    not href.startswith(url) or href == url or href == f"{url}#"
                 ):
                     continue
                 elif href.startswith("/"):
@@ -116,8 +111,7 @@ class PageScraper:
                 else:
                     if href.startswith("http"):
                         continue
-                    href = f"{url}{href}" if\
-                        not href.startswith("www.") else href
+                    href = f"{url}{href}" if not href.startswith("www.") else href
                 if href not in self.visited and is_valid_url(href):
                     new_links.add(href)
         # get text
@@ -152,7 +146,7 @@ class PageScraper:
         self._scrap()
         self.texts = self._clean_text()
         for text, source in zip(self.texts, self.sources):
-            chunks = [text[i: i + 300] for i in range(0, len(text), 300)]
+            chunks = [text[i : i + 300] for i in range(0, len(text), 300)]
             self.vector_db.insert(
                 self.page_name, chunks, metadatas=[{"source": source} for _ in chunks]
             )

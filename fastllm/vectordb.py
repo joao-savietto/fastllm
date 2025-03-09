@@ -5,10 +5,11 @@ import uuid
 
 class VectorDB:
 
-    def __init__(self,
-                 embedder_model: str = "distiluse-base-multilingual-cased-v2",
-                 path: str = "data/"
-                 ):
+    def __init__(
+        self,
+        embedder_model: str = "distiluse-base-multilingual-cased-v2",
+        path: str = "data/",
+    ):
         self.path = path
         self.em = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name=embedder_model
@@ -22,8 +23,7 @@ class VectorDB:
         return collection
 
     def insert(
-        self, collection_name: str, texts: list[str],
-        metadatas: list[dict] = None
+        self, collection_name: str, texts: list[str], metadatas: list[dict] = None
     ):
         collection = self.get_collection(collection_name.replace(" ", "_"))
         ids = [str(uuid.uuid4()) for _ in range(len(texts))]
