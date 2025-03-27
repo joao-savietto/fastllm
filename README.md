@@ -68,6 +68,6 @@ FastLLM é liberado sob a Licença MIT. Consulte o arquivo LICENSE para mais inf
 
 ## 💖 Agradecimentos!
 
-Esperamos que você encontre FastLLM útil em seus projetos baseados em LLM!
+Esperamos que você ache FastLLM útil em seus projetos baseados em LLM!
 
 ---
