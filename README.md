@@ -7,6 +7,8 @@
 FastLLM é uma biblioteca Python com ënfase em leveza e simplicidade de uso, com o objetivo de ajudar a desenvolver projetos baseados em LLMs (Large Language Models). Ele fornece uma interface simples para interagir com provedores compatíveis com OpenAI, incluindo APIs de modelos open-source como Ollama e LM Studio.
 O nome desta biblioteca foi inspirado no FastAPI, devido a sua sintaxe limpa e a facilidade de se prototipar uma nova API.
 
+**Importante:** FastLLM é uma biblioteca experimental e em desenvolvimento, e pode não ser adequada para uso em projetos reais.
+
 ## 🌟 Funcionalidades
 
 *   💻 Suporte a provedores compatíveis com OpenAI: FastLLM se integra perfeitamente com APIs populares do OpenAI, permitindo que você aproveite o poder dos LLMs em seus aplicativos.
