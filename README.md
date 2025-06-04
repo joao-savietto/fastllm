@@ -1,28 +1,35 @@
-# FastLLM
-=====================================
 
-FastLLM is a lightweight Python library designed to help build LLM (Large Language Model) based applications. It provides a simple interface for interacting with OpenAI compatible providers, including open-source models APIs like Ollama and LM Studio.
+---
 
-## Features
+# 🚀 FastLLM
 
-*   Support for OpenAI compatible providers: FastLLM integrates seamlessly with popular OpenAI APIs, allowing you to leverage the power of LLMs in your applications.
-*   Easy integration: FastLLM provides a simple, Pythonic API that makes it easy to incorporate LLM functionality into your projects.
-*   Customizability: With FastLLM, you can easily add custom tools and functions to extend the capabilities of your LLM-based application.
 
-## Getting Started
+FastLLM é uma biblioteca Python com ënfase em leveza e simplicidade de uso, com o objetivo de ajudar a desenvolver projetos baseados em LLMs (Large Language Models). Ele fornece uma interface simples para interagir com provedores compatíveis com OpenAI, incluindo APIs de modelos open-source como Ollama e LM Studio.
+O nome desta biblioteca foi inspirado no FastAPI, devido a sua sintaxe limpa e a facilidade de se prototipar uma nova API.
 
-### Installation
+**Importante:** FastLLM é uma biblioteca experimental e em desenvolvimento, e pode não ser adequada para uso em projetos reais.
 
-To get started with FastLLM, install the library using pip:
+## 🌟 Funcionalidades
+
+*   💻 Suporte a provedores compatíveis com OpenAI: FastLLM se integra perfeitamente com APIs populares do OpenAI, permitindo que você aproveite o poder dos LLMs em seus aplicativos.
+*   🔧 Integração fácil: FastLLM fornece uma API Pythonica que torna fácil incorporar a funcionalidade de LLM nos seus projetos.
+*   🛠️ Personalização: Com FastLLM, você pode adicionar facilmente ferramentas e funções (tool calling) personalizadas para estender as capacidades do seu aplicativo baseado em LLM. Utilizamos Pydantic para representar e validar inputs para as suas funções de forma simples e familiar.
+*   🔄 Workflows: Crie e gerencie sequências de tarefas ou operações, permitindo interações e automações complexas em seus aplicativos.
+
+## 📥 Primeiros passos
+
+### 🛠️ Instalação
+
+Para começar com FastLLM, instale a biblioteca usando pip:
 
 ```bash
 python setup.py sdist bdist_wheel
 pip install .
 ```
 
-### Usage
+### 💡 Uso
 
-Here's an example of how to use FastLLM in your Python script:
+Aqui está um exemplo de como usar FastLLM em seu script Python:
 
 ```python
 from fastllm import Agent, tool
@@ -30,39 +37,37 @@ from pydantic import BaseModel, Field
 
 
 class SumRequest(BaseModel):
-    num1: int = Field(..., description="The first number to be added")
-    num2: int = Field(..., description="The second number to be added")
+    num1: int = Field(..., description="O primeiro número a ser adicionado")
+    num2: int = Field(..., description="O segundo número a ser adicionado")
 
 @tool(
-    description="Sums two numbers and returns the result",
+    description="Soma dois números e retorna o resultado",
     pydantic_model=SumRequest
 )
-def sum_numbers(num1, num2):
-    print("Params:", num1, "+", num2)
-    return {"result": num1 + num2}
+def sum_numbers(inputs: SumRequest):
+    print("Parâmetros:", inputs.num1, "+", inputs.num2)
+    return {"result": inputs.num1 + inputs.num2}
 
 agent = Agent(
                model="qwen2.5:14b-instruct-q6_K",
                base_url="http://localhost:11434/v1",
                api_key="ollama",
                tools=[sum_numbers],
-               system_prompt="You are a helpful assistant"
+               system_prompt="Você é um assistente útil"
             )
 
-for message in agent.generate("Calculate 1900 + 191"):
+for message in agent.generate("Calcular 1900 + 191"):
     print(message)
 ```
 
-## Contributing
+<p>Você pode ver mais exemplos na pasta "examples" do repositório! </p>
 
-We welcome contributions to FastLLM! If you have any ideas or suggestions for improving the library, please don't hesitate to reach out.
+## 📄 Licença
 
-## License
+FastLLM é liberado sob a Licença MIT. Consulte o arquivo LICENSE para mais informações.
 
-FastLLM is released under the MIT License. See the LICENSE file for more information.
+## 💖 Agradecimentos!
 
-## Contact Us
+Esperamos que você ache FastLLM útil em seus projetos baseados em LLM!
 
-For any questions or concerns about FastLLM, feel free to contact us at [your email address].
-
-We hope you find FastLLM helpful in your LLM-based project endeavors!
+---

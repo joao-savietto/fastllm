@@ -7,23 +7,27 @@ class Node:
 
     Attributes:
         ctx (dict): ctx for additional information. Default is None.
-        messages (list): A list containing the messages to be sent to the LLM. Default is an empty list.
+        instructions (str): The instructions to be sent to the LLM. Default is an empty None. You can also pass it on the "run" method.
         agent (Agent): The agent object used for generating responses from the LLM.
         neasted_tool (bool): Indicates whether a nested tool is being used. Default is None.
-        message_to_send (str or dict): The message to be sent to the LLM. Can be either a string or a dictionary.
-        after_generation (callable): A callback function to be called after generating messages.
-        before_generation (callable): A callback function to be called before generating messages.
+        instruction (str or dict): The instruction to be sent to the LLM. Can be either a string or a dictionary.
+        after_generation (callable): A callback function to be called after generating instructions.
+        before_generation (callable): A callback function to be called before generating instructions.
     """  # noqa: E501
 
     def __init__(
         self,
+        instruction: str = None,
         ctx: dict = None,
         agent: Agent = None,
         neasted_tool: bool = None,
         after_generation: callable = None,
         before_generation: callable = None,
-        temperature: float = 0.7,
+        temperature: float = 0.6,
+        propagate_storage: bool = True,
     ):
+        self.type = "Node"
+        self.instruction = instruction
         self.ctx = ctx if ctx is not None else {}
         self.next_nodes = []
         self.agent = agent
@@ -31,12 +35,15 @@ class Node:
         self.after_generation = after_generation
         self.before_generation = before_generation
         self.temperature = temperature
+        self.propagate_storage = propagate_storage
 
-    def run(self, message_to_send: str, session_id: str = "default"):
+    def run(
+        self, instruction: str = None, image: bytes = None, session_id: str = "default"
+    ):
         """
-        Executes the node's workflow, including sending messages to the LLM and handling responses.
+        Executes the node's workflow, including sending instructions to the LLM and handling responses.
 
-        This method will send the current message to the LLM using the agent, optionally call a callback before generating,
+        This method will send the current instruction to the LLM using the agent, optionally call a callback before generating,
         and then handle the responses by transitioning to the next nodes with the generated responses.
 
         Returns:
@@ -44,25 +51,39 @@ class Node:
         """  # noqa: E501
         if self.before_generation is not None:
             self.before_generation(self, session_id)
+        message = self.instruction or instruction
         if self.agent:
+
             for _ in self.agent.generate(
-                message_to_send, session_id=session_id,
+                message=message,
+                image=image,
+                session_id=session_id,
                 neasted_tool=self.neasted_tool,
-                params={"temperature": self.temperature}
+                params={"temperature": self.temperature},
             ):
                 pass
             if self.after_generation is not None:
                 self.after_generation(self, session_id)
             for next_node in self.next_nodes:
                 next_node.ctx[session_id] = self.ctx.get(session_id, {})
-                if type(next_node).__name__ == "BooleanNode":
-                    next_node.run(session_id)
+                if next_node.type == "BooleanNode":
+                    if self.propagate_storage:
+                        next_node.storage = self.agent.store
+                        next_node.propagate_storage = True
+                    next_node.run(session_id=session_id)
+
                 else:
-                    next_node.run(message_to_send, session_id)
+                    if self.propagate_storage:
+                        next_node.agent.store = self.agent.store
+                    next_node.run(session_id=session_id, instruction=message)
 
     def connect_to(self, node):
         """Connect this node to another node."""
         self.next_nodes.append(node)
+
+    def get_history(self, session_id: str = "default"):
+        """Returns the message history of the agent"""
+        return self.agent.store.get_all(session_id)
 
 
 class BooleanNode:
@@ -71,33 +92,37 @@ class BooleanNode:
 
     Attributes:
         ctx (dict): ctx for additional information. Default is an empty dictionary.
-        messages (list): List of messages to be sent to the LLM. Default is an empty list.
+        instructions (list): List of instructions to be sent to the LLM. Default is an empty list.
         agent (Agent): The agent object used for generating responses from the LLM.
         neasted_tool (bool): Indicates whether a nested tool is being used. Default is None.
-        message_to_send (Union[str, dict]): The message to be sent to the LLM. Can be either a string or a dictionary.
-        after_generation (callable): A callback function to be called after generating messages.
-        before_generation (callable): A callback function to be called before generating messages.
+        instruction (Union[str, dict]): The instruction to be sent to the LLM. Can be either a string or a dictionary.
+        after_generation (callable): A callback function to be called after generating instructions.
+        before_generation (callable): A callback function to be called before generating instructions.
         condition (callable): A callable that determines which path to take based on the result of its execution.
         true_nodes (List["Node"]): List of nodes to transition to if the condition is True. Default is an empty list.
         false_nodes (List["Node"]): List of nodes to transition to if the condition is False. Default is an empty list.
     """  # noqa: E501
+
     def __init__(
         self,
         ctx: dict = None,
         condition: callable = None,
-        message_case_true: str = "",
-        message_case_false: str = ""
+        instruction_true: str = "",
+        instruction_false: str = "",
     ):
+        self.type = "BooleanNode"
         self.ctx = ctx if ctx is not None else {}
         self.condition = condition
         self.true_nodes = []
         self.false_nodes = []
-        self.message_case_true = message_case_true
-        self.message_case_false = message_case_false
+        self.instruction_true = instruction_true
+        self.instruction_false = instruction_false
+        self.storage = None
+        self.propagate_storage = False
 
     def run(self, session_id: str = "default"):
         """
-        Executes the node's workflow, including sending messages to the LLM and handling responses based on a conditional check.
+        Executes the node's workflow, including sending instructions to the LLM and handling responses based on a conditional check.
 
         This method will execute the condition before proceeding with either the true or false nodes, depending on whether the condition is True or False.
 
@@ -107,13 +132,21 @@ class BooleanNode:
         cond = self.condition(self, session_id)
         nodes = self.true_nodes if cond else self.false_nodes
         for next_node in nodes:
+            next_node.propagate_storage = self.propagate_storage
             next_node.ctx[session_id] = self.ctx.get(session_id, {})
             if type(next_node).__name__ == "BooleanNode":
-                next_node.run(session_id)
+                if self.propagate_storage:
+                    next_node.storage = self.storage
+                    next_node.run(session_id)
             else:
-                next_node.run(self.message_case_true if cond
-                              else self.message_case_false,
-                              session_id)
+                if self.propagate_storage:
+                    next_node.agent.store = self.storage                    
+                next_node.run(
+                    instruction=(
+                        self.instruction_true if cond else self.instruction_false
+                    ),
+                    session_id=session_id,
+                )
 
     def connect_to_false(self, node):
         """Connect this node to another node if the condition is False."""
@@ -122,3 +155,7 @@ class BooleanNode:
     def connect_to_true(self, node):
         """Connect this node to another node if the condition is True."""
         self.true_nodes.append(node)
+
+    def get_history(self, session_id: str = "default"):
+        """Returns the message history of the agent"""
+        return self.storage.get_all(session_id)
