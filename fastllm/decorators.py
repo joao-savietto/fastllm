@@ -26,7 +26,6 @@ def tool(description: str, pydantic_model: type):
                 "type": details.get("type", "string"),
                 "description": details.get("description", ""),
             }
-            if details.get("required", True):
 
             if details.get("required", True):
                 openai_format_schema["parameters"]["required"].append(param)
