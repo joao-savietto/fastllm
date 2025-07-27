@@ -134,7 +134,6 @@ class Agent:
                         "tool_calls": collected_tool_calls,
                         "partial_content": partial_content
                     }
-
     def generate(
         self,
         message: str = "",
@@ -158,12 +157,15 @@ class Agent:
             # When there are no tools, we only need one API call
             if not self.tools:
                 if stream:
+                    previous_content = ""
                     partial_content = ""
                     for chunk in self.client.chat.completions.create(**args_with_tools, stream=True):
                         delta_content = getattr(chunk.choices[0].delta, "content", "")
                         if delta_content:
                             partial_content += delta_content
-                            yield {"role": "assistant", "partial_content": partial_content}
+                            new_chunk = partial_content[len(previous_content):]
+                            yield {"role": "assistant", "partial_content": new_chunk}
+                            previous_content = partial_content
                     # Save the final message
                     final_msg = {"role": "assistant", "content": partial_content}
                     self.store.save(final_msg, session_id)
@@ -185,14 +187,18 @@ class Agent:
 
             # Streamed first API call with tools
             if stream:
+                previous_content = ""
                 for chunk in self._stream_first_api_call(args_with_tools, session_id):
                     yield chunk
 
                     if 'partial_content' in chunk:
                         partial_content += chunk['partial_content']
-                    elif 'tool_calls' in chunk:  # Capture any tool call data from stream
-                        collected_tool_calls.extend(chunk.get('tool_calls', []))
-
+                        new_chunk = partial_content[len(previous_content):]
+                        yield {
+                            "role": "assistant",
+                            "partial_content": new_chunk,
+                        }
+                        previous_content = partial_content
             else:
                 first_response = self.client.chat.completions.create(**args_with_tools)
                 message = first_response.choices[0].message
@@ -223,14 +229,17 @@ class Agent:
             }
 
             if stream:
+                previous_content = ""
                 for chunk in self.client.chat.completions.create(**args_without_tools, stream=True):
                     delta_content = getattr(chunk.choices[0].delta, "content", "")
                     if delta_content:
                         partial_content += delta_content
+                        new_chunk = partial_content[len(previous_content):]
                         yield {
                             "role": "assistant",
-                            "partial_content": partial_content,
+                            "partial_content": new_chunk,
                         }
+                        previous_content = partial_content
             else:
                 second_response = self.client.chat.completions.create(**args_without_tools)
                 final_msg = {
