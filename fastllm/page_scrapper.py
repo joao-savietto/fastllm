@@ -103,7 +103,9 @@ class PageScraper:
             href = link.get("href")
             if href:
                 if href.startswith("http") and (
-                    not href.startswith(url) or href == url or href == f"{url}#"
+                    not href.startswith(url)
+                    or href == url
+                    or href == f"{url}#"
                 ):
                     continue
                 elif href.startswith("/"):
@@ -111,7 +113,11 @@ class PageScraper:
                 else:
                     if href.startswith("http"):
                         continue
-                    href = f"{url}{href}" if not href.startswith("www.") else href
+                    href = (
+                        f"{url}{href}"
+                        if not href.startswith("www.")
+                        else href
+                    )
                 if href not in self.visited and is_valid_url(href):
                     new_links.add(href)
         # get text
@@ -119,7 +125,9 @@ class PageScraper:
         # break into lines and remove leading and trailing space on each
         lines = (line.strip() for line in text.splitlines())
         # break multi-headlines into a line each
-        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        chunks = (
+            phrase.strip() for line in lines for phrase in line.split("  ")
+        )
         # drop blank lines
         text = "\n".join(chunk for chunk in chunks if chunk)
         self.texts.append(text)
@@ -136,7 +144,9 @@ class PageScraper:
         most_common = [k for k, v in counts.items() if v >= len(texts)]
         clean_pages = []
         for text in texts:
-            text = "\n".join([x for x in text.split("\n") if x not in most_common])
+            text = "\n".join(
+                [x for x in text.split("\n") if x not in most_common]
+            )
             text = text.strip().strip("\n")
             clean_pages.append(text)
         return clean_pages
@@ -148,5 +158,7 @@ class PageScraper:
         for text, source in zip(self.texts, self.sources):
             chunks = [text[i : i + 300] for i in range(0, len(text), 300)]
             self.vector_db.insert(
-                self.page_name, chunks, metadatas=[{"source": source} for _ in chunks]
+                self.page_name,
+                chunks,
+                metadatas=[{"source": source} for _ in chunks],
             )

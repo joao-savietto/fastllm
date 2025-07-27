@@ -1,20 +1,16 @@
 """
-This module provides an Agent class for interacting with the OpenAI API to
-generate responses based on chat history.
+This module provides an Agent class for interacting with the OpenAI API to generate responses based on chat history.
 
 Classes:
-    Agent: A class to interact with the OpenAI API for
-    generating AI responses.
+    Agent: A class to interact with the OpenAI API for generating AI responses.
 """
 
-import json
-from typing import Any, Dict, Optional
+from typing import Generator, Dict, Any, List
 import base64
+import json
 
 import openai
-
 from fastllm.store import ChatStorageInterface, InMemoryChatStorage
-from fastllm.decorators import retry
 
 
 class EmptyPayload(Exception):
@@ -22,125 +18,228 @@ class EmptyPayload(Exception):
 
 
 class Agent:
-    """
-    Agent class for interacting with the OpenAI API.
-    """
-
     def __init__(
         self,
         model: str = "got4o",
         base_url: str = "https://api.openai.com/v1/",
         api_key: str = "",
-        tools: list = None,
+        tools: List[Any] = None,
         system_prompt: str = "",
-        store: ChatStorageInterface = None,
+        store: ChatStorageInterface = InMemoryChatStorage(),
     ) -> None:
         self.client = openai.OpenAI(base_url=base_url, api_key=api_key)
         self.model = model
-        self.tools = None
-        self.tool_map = {}
-        if tools is not None:
-            self.tools = []
-            for tool in tools:
-                tool_json = tool.tool_json()
-                self.tool_map[tool_json["function"]["name"]] = tool
-                self.tools.append(tool_json)
         self.system_prompt = system_prompt
         self.store = store
-        if store is None:
-            self.store = InMemoryChatStorage()
 
-    @retry(max_attempts=5, delay=2)
-    def generate(
-        self,
-        message: str,
-        image: bytes = None,
-        session_id: str = "default",
-        neasted_tool: bool = False,
-        params: Dict[str, Any] = {},
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Generate a response from the OpenAI API based
-         on the chat history and parameters
-
-        """
-        if len(self.store.get_all(session_id)) == 0:
-            sys = {"role": "system", "content": self.system_prompt}
-            self.store.save(sys)
-        else:
-            sys = self.store.get_message(0, session_id)
-            if sys["content"] != self.system_prompt:
-                self.store.set_message(
-                    index=0,
-                    message={"role": "system", "content": self.system_prompt},
-                    session_id=session_id
-                )
-        if image:
-            b64: str = base64.b64encode(image).decode("utf-8")
-            item = {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/png;base64,{b64}"},
-                    },
-                    {"type": "text", "text": message},
-                ],
+        if tools is not None and len(tools) > 0:
+            self.tools = [tool.tool_json() for tool in tools]
+            self.tool_map = {
+                t["function"]["name"]: tool for t, tool in zip(self.tools, tools)
             }
-            self.store.save(message=item, session_id=session_id)
         else:
-            self.store.save(
-                message={"role": "user", "content": message},
-                session_id=session_id)
+            self.tools = []
+            self.tool_map = {}
 
-        args = {
-            "messages": self.store.get_all(session_id),
-            "model": self.model,
-            **params,
-        }
-        if self.tools is not None:
-            args["tool_choice"] = "auto"
-            args["tools"] = self.tools
+    def _initialize_system_message(self, session_id: str) -> None:
+        """Initialize system message if none exists."""
+        sys_msg = {"role": "system", "content": self.system_prompt}
+        self.store.save(sys_msg, session_id)
 
-        response_message = self.client.chat.completions.create(**args)
-        response_message = response_message.choices[0].message
-        tool_calls = response_message.tool_calls
-        self.store.save(response_message, session_id)
-        if tool_calls:
-            while tool_calls is not None:
-                for tool_call in tool_calls:
-                    function_name = tool_call.function.name
-                    function_to_call = self.tool_map[function_name]
-                    function_args = json.loads(tool_call.function.arguments)
+    def _ensure_system_message(self, session_id: str):
+        """Ensure system message exists and is up-to-date."""
+        messages = self.store.get_all(session_id)
 
-                    function_response = function_to_call.execute(
-                        **function_args)
-                    self.store.save(
-                        {
-                            "tool_call_id": tool_call.id,
-                            "role": "tool",
-                            "name": function_name,
-                            "content": function_response,
-                        },
-                        session_id,
+        if not messages or messages[0]["content"] != self.system_prompt:
+            sys_msg = {"role": "system", "content": self.system_prompt}
+            if messages:
+                # Replace existing system message
+                self.store.set_message(0, sys_msg, session_id)
+            else:
+                # Create new session with system message
+                self.store.save(sys_msg, session_id)
+
+    def _process_user_input(
+        self, message: str, image: bytes = None
+    ) -> Dict[str, Any]:
+        """Prepare user input for storage."""
+        if not message and not image:
+            raise ValueError("Either text or image must be provided")
+
+        content_parts = []
+
+        if message:
+            content_parts.append({"type": "text", "text": message})
+
+        if image:
+            base64_str = base64.b64encode(image).decode("utf-8")
+            content_parts.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{base64_str}"},
+                }
+            )
+
+        return {"role": "user", "content": content_parts}
+
+    def _stream_first_api_call(
+        self, args_with_tools: Dict[str, Any], session_id: str
+    ) -> Generator[Dict[str, Any], None, None]:
+        """Stream the first API call and yield tool calls and assistant content in real time."""
+        
+        partial_content = ""
+        collected_tool_calls = []
+        current_tool_call = {}
+
+        for chunk in self.client.chat.completions.create(**args_with_tools, stream=True):
+            if not hasattr(chunk.choices[0], "delta"):
+                continue
+
+            delta = chunk.choices[0].delta
+            finish_reason = getattr(chunk.choices[0], "finish_reason", None)
+
+            # Stream assistant content
+            if hasattr(delta, "content") and delta.content:
+                partial_content += delta.content
+                yield {
+                    "role": "assistant",
+                    "partial_content": partial_content,
+                }
+
+            # Handle tool calls
+            elif hasattr(delta, "tool_call"):
+                tc = getattr(delta, "tool_call", None)
+                if tc is not None:
+                    function_name = next(
+                        t["function"]["name"]
+                        for t in self.tools
+                        if t["function"]["name"] == getattr(tc.function, "name", "")
                     )
 
-                args["messages"] = self.store.get_all(session_id)
-                if neasted_tool is False:
-                    if "tool_choice" in params:
-                        del args["tool_choice"]
-                    if "tools" in params:
-                        del args["tools"]
-                second_response = self.client.chat.completions.create(**args)
-                if not second_response.choices:
-                    raise EmptyPayload(second_response.error)
-                response_message = second_response.choices[0].message
-                if neasted_tool is True:
-                    tool_calls = response_message.tool_calls
+                    current_tool_call.update({
+                        "tool_call_id": getattr(tc, "id", ""),
+                        "function_name": function_name,
+                        "arguments": json.loads(getattr(tc.function, "arguments", "{}")),
+                    })
+
+            # Finalize at stream end
+            if finish_reason is not None:
+                if hasattr(delta, "content") and delta.content:
+                    partial_content += delta.content
+
+                if current_tool_call:
+                    collected_tool_calls.append(current_tool_call)
+                    yield {
+                        "tool_call": True,
+                        "tool_calls": collected_tool_calls,
+                        "partial_content": partial_content
+                    }
+
+    def generate(
+        self,
+        message: str = "",
+        image: bytes = None,
+        session_id: str = "default",
+        stream: bool = True,
+    ) -> Generator[Dict[str, Any], None, None]:
+        """Core generation with tool call sequencing and streaming support."""
+        # 1. Ensure system prompt is up-to-date
+        self._ensure_system_message(session_id)
+        msg_content = self._process_user_input(message, image)
+        self.store.save(msg_content, session_id)
+
+        args_with_tools: Dict[str, Any] = {
+            "messages": self.store.get_all(session_id),
+            "model": self.model,
+            "tools": self.tools if self.tools else None,
+        }
+
+        try:
+            # When there are no tools, we only need one API call
+            if not self.tools:
+                if stream:
+                    partial_content = ""
+                    for chunk in self.client.chat.completions.create(**args_with_tools, stream=True):
+                        delta_content = getattr(chunk.choices[0].delta, "content", "")
+                        if delta_content:
+                            partial_content += delta_content
+                            yield {"role": "assistant", "partial_content": partial_content}
+                    # Save the final message
+                    final_msg = {"role": "assistant", "content": partial_content}
+                    self.store.save(final_msg, session_id)
+                    return  # We're done
                 else:
-                    tool_calls = None
-                self.store.save(response_message, session_id)
-                if response_message.role == "assistant" and tool_calls is None:
-                    yield json.loads(response_message.json())
-        else:
-            yield json.loads(response_message.json())
+                    first_response = self.client.chat.completions.create(**args_with_tools)
+                    message_obj = first_response.choices[0].message
+                    final_msg = {
+                        "role": "assistant",
+                        **message_obj.model_dump(),
+                    }
+                    self.store.save(final_msg, session_id)
+                    yield final_msg
+                    return  # We're done
+
+            # If we have tools, proceed with the two API call sequence
+            collected_tool_calls = []
+            partial_content = ""
+
+            # Streamed first API call with tools
+            if stream:
+                for chunk in self._stream_first_api_call(args_with_tools, session_id):
+                    yield chunk
+
+                    if 'partial_content' in chunk:
+                        partial_content += chunk['partial_content']
+                    elif 'tool_calls' in chunk:  # Capture any tool call data from stream
+                        collected_tool_calls.extend(chunk.get('tool_calls', []))
+
+            else:
+                first_response = self.client.chat.completions.create(**args_with_tools)
+                message = first_response.choices[0].message
+                collected_tool_calls = getattr(message, "tool_calls", []) or []
+
+            # 2. Process tool calls from both stream and non-stream paths
+            for call in collected_tool_calls:
+                function_name = call["function_name"]
+
+                try:
+                    result = self.tool_map[function_name].execute(**call["arguments"])
+
+                    tool_response = {
+                        "tool_call_id": call.get("tool_call_id"),
+                        "role": "tool",
+                        "name": function_name,
+                        "content": result,
+                    }
+                    self.store.save(tool_response, session_id)
+                except Exception as e:
+                    error_response = {"error": f"Tool {function_name} failed: {e}"}
+                    tool_response["content"] = error_response
+
+            # 3. Second API call (without tools), streamed
+            args_without_tools: Dict[str, Any] = {
+                "messages": self.store.get_all(session_id),
+                "model": self.model,
+            }
+
+            if stream:
+                for chunk in self.client.chat.completions.create(**args_without_tools, stream=True):
+                    delta_content = getattr(chunk.choices[0].delta, "content", "")
+                    if delta_content:
+                        partial_content += delta_content
+                        yield {
+                            "role": "assistant",
+                            "partial_content": partial_content,
+                        }
+            else:
+                second_response = self.client.chat.completions.create(**args_without_tools)
+                final_msg = {
+                    "role": "assistant",
+                    **second_response.choices[0].message.model_dump(),
+                }
+                yield final_msg
+
+        except Exception as e:
+            import traceback
+            print(traceback.format_exc())
+            raise EmptyPayload(f"API error: {e}")

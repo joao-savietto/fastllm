@@ -53,9 +53,7 @@ agent = Agent(
 
 # Create nodes in the workflow
 main_node = Node(
-    instruction=(
-        "Calculate BMI based on weight (90kg) and height (1.75m)"
-    ),
+    instruction=("Calculate BMI based on weight (90kg) and height (1.75m)"),
     agent=agent,
     before_generation=lambda n, s: print("Calculating BMI..."),
     after_generation=lambda n, s: print("Done calculating BMI!"),
@@ -82,7 +80,9 @@ overweight_node = Node(
 normal_weight_node = Node(
     instruction="Provide tips for maintaining a healthy lifestyle and preventing weight gain",
     agent=agent,
-    before_generation=lambda n, s: print("\nGenerating healthy lifestyle tips..."),
+    before_generation=lambda n, s: print(
+        "\nGenerating healthy lifestyle tips..."
+    ),
     after_generation=print_response,
     temperature=0.7,
 )
@@ -90,8 +90,12 @@ normal_weight_node = Node(
 underweight_node = Node(
     instruction="Suggest ways to gain weight healthily through diet and exercise",
     agent=agent,
-    before_generation=lambda n, s: print("Generating healthy weight gain plan..."),
-    after_generation=lambda n, s: print("Weight gain recommendations complete!\n"),
+    before_generation=lambda n, s: print(
+        "Generating healthy weight gain plan..."
+    ),
+    after_generation=lambda n, s: print(
+        "Weight gain recommendations complete!\n"
+    ),
     temperature=0.6,
 )
 

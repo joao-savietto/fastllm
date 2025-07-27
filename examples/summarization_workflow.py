@@ -17,19 +17,20 @@ def print_after_generation(node: Node, session_id: str):
 
 # Initialize the agent
 agent = Agent(
-    model="qwen2.5:32b-instruct-q5_K_M",
-    base_url="http://10.147.17.172:11434/v1",
+    model="devstral-small-2505",
+    base_url="http://localhost:1234/v1",
     api_key="ollama",
     system_prompt=(
-        "You are Qwen, a harmless and useful "
-        "assistant created by Alibaba"),
+        "You are Qwen, a harmless and useful " "assistant created by Alibaba"
+    ),
 )
 
 # Create nodes in the workflow
 node1 = Node(
     instruction=(
         "Write a rich and detailed explanation "
-        "of the events of World War II."),
+        "of the events of World War II."
+    ),
     agent=agent,
     before_generation=print_before_generation,
     after_generation=print_after_generation,
@@ -39,7 +40,8 @@ node1 = Node(
 node2 = Node(
     instruction=(
         "Summarize the history into "
-        "10 bullet points, focusing on key events and outcomes."),
+        "10 bullet points, focusing on key events and outcomes."
+    ),
     agent=agent,
     before_generation=print_before_generation,
     after_generation=print_after_generation,
@@ -55,9 +57,10 @@ def main():
     print("\nStarting World War II explanation and summarization workflow")
 
     # First node will generate detailed history
-    node1.run(instruction=(
-        "Write a comprehensive overview "
-        "of World War II events.")
+    node1.run(
+        instruction=(
+            "Write a comprehensive overview " "of World War II events."
+        )
     )
 
 

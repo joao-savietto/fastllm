@@ -5,7 +5,9 @@ from fastllm.store.storage_interface import ChatStorageInterface
 
 
 class RedisChatStorage(ChatStorageInterface):
-    def __init__(self, host: str = "localhost", port: int = 6379, db: int = 0) -> None:
+    def __init__(
+        self, host: str = "localhost", port: int = 6379, db: int = 0
+    ) -> None:
         self.redis_client = redis.StrictRedis(host=host, port=port, db=db)
 
     def save(self, message: dict, session_id: str = "default") -> None:

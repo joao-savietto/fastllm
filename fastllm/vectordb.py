@@ -23,7 +23,10 @@ class VectorDB:
         return collection
 
     def insert(
-        self, collection_name: str, texts: list[str], metadatas: list[dict] = None
+        self,
+        collection_name: str,
+        texts: list[str],
+        metadatas: list[dict] = None,
     ):
         collection = self.get_collection(collection_name.replace(" ", "_"))
         ids = [str(uuid.uuid4()) for _ in range(len(texts))]

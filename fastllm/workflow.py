@@ -38,7 +38,10 @@ class Node:
         self.propagate_storage = propagate_storage
 
     def run(
-        self, instruction: str = None, image: bytes = None, session_id: str = "default"
+        self,
+        instruction: str = None,
+        image: bytes = None,
+        session_id: str = "default",
     ):
         """
         Executes the node's workflow, including sending instructions to the LLM and handling responses.
@@ -140,10 +143,12 @@ class BooleanNode:
                     next_node.run(session_id)
             else:
                 if self.propagate_storage:
-                    next_node.agent.store = self.storage                    
+                    next_node.agent.store = self.storage
                 next_node.run(
                     instruction=(
-                        self.instruction_true if cond else self.instruction_false
+                        self.instruction_true
+                        if cond
+                        else self.instruction_false
                     ),
                     session_id=session_id,
                 )
