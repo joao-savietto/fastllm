@@ -134,24 +134,39 @@ class Agent:
                         "tool_calls": collected_tool_calls,
                         "partial_content": partial_content
                     }
+
     def generate(
         self,
         message: str = "",
         image: bytes = None,
         session_id: str = "default",
         stream: bool = True,
+        params: Dict[str, Any] = None,
     ) -> Generator[Dict[str, Any], None, None]:
-        """Core generation with tool call sequencing and streaming support."""
+        """Core generation with tool call sequencing and streaming support.
+
+        Args:
+            message: User's text input.
+            image: Optional image data as bytes.
+            session_id: Identifier for the chat session.
+            stream: Whether to stream responses.
+            params: Additional parameters to pass to the OpenAI API (e.g., temperature, top_p).
+        """
         # 1. Ensure system prompt is up-to-date
         self._ensure_system_message(session_id)
         msg_content = self._process_user_input(message, image)
         self.store.save(msg_content, session_id)
 
+        # Prepare base arguments for the first API call
         args_with_tools: Dict[str, Any] = {
             "messages": self.store.get_all(session_id),
             "model": self.model,
             "tools": self.tools if self.tools else None,
         }
+
+        # Merge with any extra params provided
+        if params:
+            args_with_tools.update(params)
 
         try:
             # When there are no tools, we only need one API call
@@ -189,8 +204,6 @@ class Agent:
             if stream:
                 previous_content = ""
                 for chunk in self._stream_first_api_call(args_with_tools, session_id):
-                    yield chunk
-
                     if 'partial_content' in chunk:
                         partial_content += chunk['partial_content']
                         new_chunk = partial_content[len(previous_content):]
@@ -199,6 +212,9 @@ class Agent:
                             "partial_content": new_chunk,
                         }
                         previous_content = partial_content
+                    else:
+                        # For tool calls, yield the chunk as is
+                        yield chunk
             else:
                 first_response = self.client.chat.completions.create(**args_with_tools)
                 message = first_response.choices[0].message
@@ -227,6 +243,10 @@ class Agent:
                 "messages": self.store.get_all(session_id),
                 "model": self.model,
             }
+
+            # Merge extra params into second call as well
+            if params:
+                args_without_tools.update(params)
 
             if stream:
                 previous_content = ""

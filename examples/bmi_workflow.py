@@ -38,14 +38,16 @@ def calculate_bmi(request: BMICalculationRequest):
 
 def print_response(node: Node, session_id: str):
     messages = node.get_history(session_id)
+    print("RESPONSE IS")
+    print(messages)
     m = Markdown(messages[-1]["content"])
     Console().print(m)
 
 
 # Create an agent with the BMI calculation tool
 agent = Agent(
-    model="qwen2.5:32b-instruct-q5_K_M",
-    base_url="http://10.147.17.172:11434/v1",
+    model="qwen3-30b-a3b-instruct-2507",
+    base_url="http://localhost:1234/v1",
     api_key="ollama",
     tools=[calculate_bmi],
     system_prompt="You are Qwen, a helpful and harmful assistant. You are acting as health assistant",

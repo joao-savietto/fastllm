@@ -9,7 +9,6 @@ class Node:
         ctx (dict): ctx for additional information. Default is None.
         instructions (str): The instructions to be sent to the LLM. Default is an empty None. You can also pass it on the "run" method.
         agent (Agent): The agent object used for generating responses from the LLM.
-        neasted_tool (bool): Indicates whether a nested tool is being used. Default is None.
         instruction (str or dict): The instruction to be sent to the LLM. Can be either a string or a dictionary.
         after_generation (callable): A callback function to be called after generating instructions.
         before_generation (callable): A callback function to be called before generating instructions.
@@ -20,7 +19,6 @@ class Node:
         instruction: str = None,
         ctx: dict = None,
         agent: Agent = None,
-        neasted_tool: bool = None,
         after_generation: callable = None,
         before_generation: callable = None,
         temperature: float = 0.6,
@@ -31,7 +29,6 @@ class Node:
         self.ctx = ctx if ctx is not None else {}
         self.next_nodes = []
         self.agent = agent
-        self.neasted_tool = neasted_tool
         self.after_generation = after_generation
         self.before_generation = before_generation
         self.temperature = temperature
@@ -61,7 +58,6 @@ class Node:
                 message=message,
                 image=image,
                 session_id=session_id,
-                neasted_tool=self.neasted_tool,
                 params={"temperature": self.temperature},
             ):
                 pass
@@ -97,7 +93,6 @@ class BooleanNode:
         ctx (dict): ctx for additional information. Default is an empty dictionary.
         instructions (list): List of instructions to be sent to the LLM. Default is an empty list.
         agent (Agent): The agent object used for generating responses from the LLM.
-        neasted_tool (bool): Indicates whether a nested tool is being used. Default is None.
         instruction (Union[str, dict]): The instruction to be sent to the LLM. Can be either a string or a dictionary.
         after_generation (callable): A callback function to be called after generating instructions.
         before_generation (callable): A callback function to be called before generating instructions.
