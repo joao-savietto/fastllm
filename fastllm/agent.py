@@ -11,10 +11,8 @@ import json
 
 import openai
 from fastllm.store import ChatStorageInterface, InMemoryChatStorage
-
-
-class EmptyPayload(Exception):
-    pass
+from fastllm.decorators import streamable_response
+from fastllm.exceptions import EmptyPayload
 
 
 class Agent:
@@ -35,7 +33,8 @@ class Agent:
         if tools is not None and len(tools) > 0:
             self.tools = [tool.tool_json() for tool in tools]
             self.tool_map = {
-                t["function"]["name"]: tool for t, tool in zip(self.tools, tools)
+                t["function"]["name"]: tool
+                for t, tool in zip(self.tools, tools)
             }
         else:
             self.tools = []
@@ -76,7 +75,9 @@ class Agent:
             content_parts.append(
                 {
                     "type": "image_url",
-                    "image_url": {"url": f"data:image/png;base64,{base64_str}"},
+                    "image_url": {
+                        "url": f"data:image/png;base64,{base64_str}"
+                    },
                 }
             )
 
@@ -86,12 +87,14 @@ class Agent:
         self, args_with_tools: Dict[str, Any], session_id: str
     ) -> Generator[Dict[str, Any], None, None]:
         """Stream the first API call and yield tool calls and assistant content in real time."""
-        
+
         partial_content = ""
         collected_tool_calls = []
         current_tool_call = {}
 
-        for chunk in self.client.chat.completions.create(**args_with_tools, stream=True):
+        for chunk in self.client.chat.completions.create(
+            **args_with_tools, stream=True
+        ):
             if not hasattr(chunk.choices[0], "delta"):
                 continue
 
@@ -113,14 +116,19 @@ class Agent:
                     function_name = next(
                         t["function"]["name"]
                         for t in self.tools
-                        if t["function"]["name"] == getattr(tc.function, "name", "")
+                        if t["function"]["name"]
+                        == getattr(tc.function, "name", "")
                     )
 
-                    current_tool_call.update({
-                        "tool_call_id": getattr(tc, "id", ""),
-                        "function_name": function_name,
-                        "arguments": json.loads(getattr(tc.function, "arguments", "{}")),
-                    })
+                    current_tool_call.update(
+                        {
+                            "tool_call_id": getattr(tc, "id", ""),
+                            "function_name": function_name,
+                            "arguments": json.loads(
+                                getattr(tc.function, "arguments", "{}")
+                            ),
+                        }
+                    )
 
             # Finalize at stream end
             if finish_reason is not None:
@@ -132,9 +140,10 @@ class Agent:
                     yield {
                         "tool_call": True,
                         "tool_calls": collected_tool_calls,
-                        "partial_content": partial_content
+                        "partial_content": partial_content,
                     }
 
+    @streamable_response
     def generate(
         self,
         message: str = "",
@@ -174,19 +183,33 @@ class Agent:
                 if stream:
                     previous_content = ""
                     partial_content = ""
-                    for chunk in self.client.chat.completions.create(**args_with_tools, stream=True):
-                        delta_content = getattr(chunk.choices[0].delta, "content", "")
+                    for chunk in self.client.chat.completions.create(
+                        **args_with_tools, stream=True
+                    ):
+                        delta_content = getattr(
+                            chunk.choices[0].delta, "content", ""
+                        )
                         if delta_content:
                             partial_content += delta_content
-                            new_chunk = partial_content[len(previous_content):]
-                            yield {"role": "assistant", "partial_content": new_chunk}
+                            new_chunk = partial_content[
+                                len(previous_content) :
+                            ]
+                            yield {
+                                "role": "assistant",
+                                "partial_content": new_chunk,
+                            }
                             previous_content = partial_content
                     # Save the final message
-                    final_msg = {"role": "assistant", "content": partial_content}
+                    final_msg = {
+                        "role": "assistant",
+                        "content": partial_content,
+                    }
                     self.store.save(final_msg, session_id)
                     return  # We're done
                 else:
-                    first_response = self.client.chat.completions.create(**args_with_tools)
+                    first_response = self.client.chat.completions.create(
+                        **args_with_tools
+                    )
                     message_obj = first_response.choices[0].message
                     final_msg = {
                         "role": "assistant",
@@ -203,10 +226,12 @@ class Agent:
             # Streamed first API call with tools
             if stream:
                 previous_content = ""
-                for chunk in self._stream_first_api_call(args_with_tools, session_id):
-                    if 'partial_content' in chunk:
-                        partial_content += chunk['partial_content']
-                        new_chunk = partial_content[len(previous_content):]
+                for chunk in self._stream_first_api_call(
+                    args_with_tools, session_id
+                ):
+                    if "partial_content" in chunk:
+                        partial_content += chunk["partial_content"]
+                        new_chunk = partial_content[len(previous_content) :]
                         yield {
                             "role": "assistant",
                             "partial_content": new_chunk,
@@ -216,16 +241,22 @@ class Agent:
                         # For tool calls, yield the chunk as is
                         yield chunk
             else:
-                first_response = self.client.chat.completions.create(**args_with_tools)
+                first_response = self.client.chat.completions.create(
+                    **args_with_tools
+                )
                 message = first_response.choices[0].message
-                collected_tool_calls = getattr(message, "tool_calls", []) or []
+                collected_tool_calls = (
+                    getattr(message, "tool_calls", []) or []
+                )
 
             # 2. Process tool calls from both stream and non-stream paths
             for call in collected_tool_calls:
                 function_name = call["function_name"]
 
                 try:
-                    result = self.tool_map[function_name].execute(**call["arguments"])
+                    result = self.tool_map[function_name].execute(
+                        **call["arguments"]
+                    )
 
                     tool_response = {
                         "tool_call_id": call.get("tool_call_id"),
@@ -235,7 +266,9 @@ class Agent:
                     }
                     self.store.save(tool_response, session_id)
                 except Exception as e:
-                    error_response = {"error": f"Tool {function_name} failed: {e}"}
+                    error_response = {
+                        "error": f"Tool {function_name} failed: {e}"
+                    }
                     tool_response["content"] = error_response
 
             # 3. Second API call (without tools), streamed
@@ -250,18 +283,24 @@ class Agent:
 
             if stream:
                 previous_content = ""
-                for chunk in self.client.chat.completions.create(**args_without_tools, stream=True):
-                    delta_content = getattr(chunk.choices[0].delta, "content", "")
+                for chunk in self.client.chat.completions.create(
+                    **args_without_tools, stream=True
+                ):
+                    delta_content = getattr(
+                        chunk.choices[0].delta, "content", ""
+                    )
                     if delta_content:
                         partial_content += delta_content
-                        new_chunk = partial_content[len(previous_content):]
+                        new_chunk = partial_content[len(previous_content) :]
                         yield {
                             "role": "assistant",
                             "partial_content": new_chunk,
                         }
                         previous_content = partial_content
             else:
-                second_response = self.client.chat.completions.create(**args_without_tools)
+                second_response = self.client.chat.completions.create(
+                    **args_without_tools
+                )
                 final_msg = {
                     "role": "assistant",
                     **second_response.choices[0].message.model_dump(),
@@ -270,5 +309,6 @@ class Agent:
 
         except Exception as e:
             import traceback
+
             print(traceback.format_exc())
             raise EmptyPayload(f"API error: {e}")

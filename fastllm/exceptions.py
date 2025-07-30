@@ -1,0 +1,2 @@
+class EmptyPayload(Exception):
+    pass

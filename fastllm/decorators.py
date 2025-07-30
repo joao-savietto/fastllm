@@ -1,7 +1,9 @@
 import json
 import threading
 import time
+from fastllm.exceptions import EmptyPayload
 from functools import wraps
+from typing import Generator, Any, Callable
 
 import openai
 
@@ -77,3 +79,31 @@ def retry(max_attempts=5, delay=2):
         return wrapper
 
     return decorator
+
+
+def streamable_response(
+    func: Callable[..., Generator],
+) -> Callable[..., Any]:
+    """
+    Decorator to make a generator-returning function behave like:
+      - Returns a generator when `stream=True`
+      - Returns the first (and only) value when `stream=False`
+
+    Useful for APIs where you want one interface
+    that adapts based on stream flag.
+    """
+
+    def wrapper(*args, **kwargs):
+        stream = kwargs.get("stream", False)
+        gen = func(*args, **kwargs)
+
+        if not stream:
+            try:
+                # Get the first (and only) value from generator
+                return next(gen)
+            except StopIteration:
+                raise EmptyPayload("No response generated")
+        else:
+            return gen
+
+    return wrapper
