@@ -23,6 +23,7 @@ class Node:
         before_generation: callable = None,
         temperature: float = 0.6,
         propagate_storage: bool = True,
+        streaming: bool = False,
     ):
         self.type = "Node"
         self.instruction = instruction
@@ -33,6 +34,7 @@ class Node:
         self.before_generation = before_generation
         self.temperature = temperature
         self.propagate_storage = propagate_storage
+        self.streaming = streaming
 
     def run(
         self,
@@ -53,16 +55,23 @@ class Node:
             self.before_generation(self, session_id)
         message = self.instruction or instruction
         if self.agent:
+            generate_kwargs = {
+                "message": message,
+                "image": image,
+                "session_id": session_id,
+                "stream": self.streaming,
+                "params": {"temperature": self.temperature},
+            }
 
-            for _ in self.agent.generate(
-                message=message,
-                image=image,
-                session_id=session_id,
-                params={"temperature": self.temperature},
-            ):
-                pass
-            if self.after_generation is not None:
-                self.after_generation(self, session_id)
+            if self.streaming:
+                for chunk in self.agent.generate(**generate_kwargs):
+                    if self.after_generation:
+                        self.after_generation(self, session_id, chunk)
+            else:
+                generated = self.agent.generate(**generate_kwargs)
+                if self.after_generation:
+                    self.after_generation(self, session_id, generated["content"])
+
             for next_node in self.next_nodes:
                 next_node.ctx[session_id] = self.ctx.get(session_id, {})
                 if next_node.type == "BooleanNode":
@@ -107,6 +116,8 @@ class BooleanNode:
         condition: callable = None,
         instruction_true: str = "",
         instruction_false: str = "",
+        storage: any = None,
+        propagate_storage: bool = True
     ):
         self.type = "BooleanNode"
         self.ctx = ctx if ctx is not None else {}
@@ -115,8 +126,8 @@ class BooleanNode:
         self.false_nodes = []
         self.instruction_true = instruction_true
         self.instruction_false = instruction_false
+        self.propagate_storage = True
         self.storage = None
-        self.propagate_storage = False
 
     def run(self, session_id: str = "default"):
         """

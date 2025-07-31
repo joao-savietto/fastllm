@@ -251,15 +251,19 @@ class Agent:
 
             # 2. Process tool calls from both stream and non-stream paths
             for call in collected_tool_calls:
-                function_name = call["function_name"]
+                # Convert ChatCompletionMessageToolCall to dictionary format
+                if hasattr(call, 'function'):
+                    function_name = call.function.name
+                    arguments = json.loads(call.function.arguments or "{}")
+                else:
+                    # Fallback for direct dict access (for streaming path)
+                    function_name = call["function_name"]
+                    arguments = call["arguments"]
 
                 try:
-                    result = self.tool_map[function_name].execute(
-                        **call["arguments"]
-                    )
-
+                    result = self.tool_map[function_name].execute(**arguments)
                     tool_response = {
-                        "tool_call_id": call.get("tool_call_id"),
+                        "tool_call_id": call.get("tool_call_id") if isinstance(call, dict) else getattr(call, 'id', ''),
                         "role": "tool",
                         "name": function_name,
                         "content": result,
@@ -305,6 +309,7 @@ class Agent:
                     "role": "assistant",
                     **second_response.choices[0].message.model_dump(),
                 }
+                self.store.save(final_msg, session_id)
                 yield final_msg
 
         except Exception as e:
