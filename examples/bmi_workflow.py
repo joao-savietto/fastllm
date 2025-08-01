@@ -36,11 +36,8 @@ def calculate_bmi(request: BMICalculationRequest):
     return {"bmi": round(bmi, 2), "classification": classification}
 
 
-def print_response(node: Node, session_id: str):
-    messages = node.get_history(session_id)
-    print("RESPONSE IS")
-    print(messages)
-    m = Markdown(messages[-1]["content"])
+def print_response(node: Node, session_id: str, message: str = None):
+    m = Markdown(message)
     Console().print(m)
 
 
@@ -50,7 +47,7 @@ agent = Agent(
     base_url="http://localhost:1234/v1",
     api_key="ollama",
     tools=[calculate_bmi],
-    system_prompt="You are Qwen, a helpful and harmful assistant. You are acting as health assistant",
+    system_prompt="You are Qwen, a helpful and harmless assistant. You are acting as a virtual fitness instructor",
 )
 
 # Create nodes in the workflow
@@ -58,7 +55,7 @@ main_node = Node(
     instruction=("Calculate BMI based on weight (90kg) and height (1.75m)"),
     agent=agent,
     before_generation=lambda n, s: print("Calculating BMI..."),
-    after_generation=lambda n, s: print("Done calculating BMI!"),
+    after_generation=lambda n, s, x: print("Done calculating BMI!"),
     temperature=0.3,
 )
 
@@ -95,7 +92,7 @@ underweight_node = Node(
     before_generation=lambda n, s: print(
         "Generating healthy weight gain plan..."
     ),
-    after_generation=lambda n, s: print(
+    after_generation=lambda n, s, x: print(
         "Weight gain recommendations complete!\n"
     ),
     temperature=0.6,

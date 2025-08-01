@@ -17,12 +17,12 @@ def sum_numbers(inputs: SumRequest):
 
 
 agent = Agent(
-    model="qwen2.5:14b-instruct-q6_K",
-    base_url="http://localhost:11434/v1",
+    model="qwen3-30b-a3b-instruct-2507",
+    base_url="http://localhost:1234/v1",
     api_key="ollama",
     tools=[sum_numbers],
     system_prompt="You are a helpful assistant",
 )
 
-for message in agent.generate("Calculate 1900 + 191"):
-    print(message)
+for chunk in agent.generate("Calculate 1900 + 191 using your tool sum_numbers", stream=True):
+    print(chunk["partial_content"], end="", flush=True)

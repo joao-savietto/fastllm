@@ -1,5 +1,6 @@
 """
-This module provides an Agent class for interacting with the OpenAI API to generate responses based on chat history.
+This module provides an Agent class for interacting with the OpenAI API to 
+generate responses based on chat history.
 
 Classes:
     Agent: A class to interact with the OpenAI API for generating AI responses.
@@ -45,7 +46,7 @@ class Agent:
         sys_msg = {"role": "system", "content": self.system_prompt}
         self.store.save(sys_msg, session_id)
 
-    def _ensure_system_message(self, session_id: str):
+    def _ensure_system_message(self, session_id: str) -> None:
         """Ensure system message exists and is up-to-date."""
         messages = self.store.get_all(session_id)
 
@@ -59,7 +60,9 @@ class Agent:
                 self.store.save(sys_msg, session_id)
 
     def _process_user_input(
-        self, message: str, image: bytes = None
+        self, 
+        message: str, 
+        image: bytes = None
     ) -> Dict[str, Any]:
         """Prepare user input for storage."""
         if not message and not image:
@@ -71,6 +74,7 @@ class Agent:
             content_parts.append({"type": "text", "text": message})
 
         if image:
+            # Encode image to base64
             base64_str = base64.b64encode(image).decode("utf-8")
             content_parts.append(
                 {
@@ -84,13 +88,17 @@ class Agent:
         return {"role": "user", "content": content_parts}
 
     def _stream_first_api_call(
-        self, args_with_tools: Dict[str, Any], session_id: str
+        self,
+        args_with_tools: Dict[str, Any],
+        session_id: str
     ) -> Generator[Dict[str, Any], None, None]:
         """Stream the first API call and yield tool calls and assistant content in real time."""
 
         partial_content = ""
-        collected_tool_calls = []
-        current_tool_call = {}
+        # Dictionary to accumulate tool calls by index
+        tool_calls_accumulator = {}
+        # List to track the order of tool calls
+        tool_call_indices = []
 
         for chunk in self.client.chat.completions.create(
             **args_with_tools, stream=True
@@ -110,36 +118,50 @@ class Agent:
                 }
 
             # Handle tool calls
-            elif hasattr(delta, "tool_call"):
-                tc = getattr(delta, "tool_call", None)
-                if tc is not None:
-                    function_name = next(
-                        t["function"]["name"]
-                        for t in self.tools
-                        if t["function"]["name"]
-                        == getattr(tc.function, "name", "")
-                    )
-
-                    current_tool_call.update(
-                        {
-                            "tool_call_id": getattr(tc, "id", ""),
-                            "function_name": function_name,
-                            "arguments": json.loads(
-                                getattr(tc.function, "arguments", "{}")
-                            ),
+            if hasattr(delta, "tool_calls") and delta.tool_calls:
+                for tool_call in delta.tool_calls:
+                    index = tool_call.index
+                    if index not in tool_calls_accumulator:
+                        # Initialize new tool call
+                        tool_calls_accumulator[index] = {
+                            "id": tool_call.id or "",
+                            "function": {
+                                "name": "",
+                                "arguments": ""
+                            }
                         }
-                    )
+                        tool_call_indices.append(index)
+                    
+                    # Update function name if present
+                    if tool_call.function and tool_call.function.name:
+                        tool_calls_accumulator[index]["function"]["name"] = tool_call.function.name
+                    
+                    # Accumulate arguments delta
+                    if tool_call.function and tool_call.function.arguments:
+                        tool_calls_accumulator[index]["function"]["arguments"] += tool_call.function.arguments
 
             # Finalize at stream end
             if finish_reason is not None:
                 if hasattr(delta, "content") and delta.content:
                     partial_content += delta.content
 
-                if current_tool_call:
-                    collected_tool_calls.append(current_tool_call)
+                # Convert accumulated tool calls to list in order
+                tool_calls_list = []
+                for idx in tool_call_indices:
+                    if tool_calls_accumulator[idx]["function"]["name"]:
+                        tool_calls_list.append({
+                            "id": tool_calls_accumulator[idx]["id"],
+                            "type": "function",
+                            "function": {
+                                "name": tool_calls_accumulator[idx]["function"]["name"],
+                                "arguments": tool_calls_accumulator[idx]["function"]["arguments"]
+                            }
+                        })
+
+                if tool_calls_list:
                     yield {
                         "tool_call": True,
-                        "tool_calls": collected_tool_calls,
+                        "tool_calls": tool_calls_list,
                         "partial_content": partial_content,
                     }
 
@@ -150,7 +172,7 @@ class Agent:
         image: bytes = None,
         session_id: str = "default",
         stream: bool = True,
-        params: Dict[str, Any] = None,
+        params: Dict[str, Any] = None
     ) -> Generator[Dict[str, Any], None, None]:
         """Core generation with tool call sequencing and streaming support.
 
@@ -192,7 +214,7 @@ class Agent:
                         if delta_content:
                             partial_content += delta_content
                             new_chunk = partial_content[
-                                len(previous_content) :
+                                len(previous_content):
                             ]
                             yield {
                                 "role": "assistant",
@@ -226,19 +248,26 @@ class Agent:
             # Streamed first API call with tools
             if stream:
                 previous_content = ""
+                collected_tool_calls = []   # Initialize tool call collection
                 for chunk in self._stream_first_api_call(
                     args_with_tools, session_id
                 ):
-                    if "partial_content" in chunk:
+                    if "partial_content" in chunk and "tool_call" not in chunk:
                         partial_content += chunk["partial_content"]
-                        new_chunk = partial_content[len(previous_content) :]
+                        new_chunk = partial_content[len(previous_content):]
                         yield {
                             "role": "assistant",
                             "partial_content": new_chunk,
                         }
                         previous_content = partial_content
-                    else:
-                        # For tool calls, yield the chunk as is
+                    elif "tool_calls" in chunk and "tool_call" in chunk:
+                        # Handle tool call chunks properly
+                        collected_tool_calls = chunk["tool_calls"]
+                        yield chunk
+                    elif "tool_call" in chunk and chunk["tool_call"]:
+                        # This is a special case for the streaming API that sends tool_call=True
+                        if "tool_calls" in chunk:
+                            collected_tool_calls = chunk["tool_calls"]
                         yield chunk
             else:
                 first_response = self.client.chat.completions.create(
@@ -251,19 +280,32 @@ class Agent:
 
             # 2. Process tool calls from both stream and non-stream paths
             for call in collected_tool_calls:
-                # Convert ChatCompletionMessageToolCall to dictionary format
+                # Handle tool call object
                 if hasattr(call, 'function'):
                     function_name = call.function.name
-                    arguments = json.loads(call.function.arguments or "{}")
+                    arguments_str = call.function.arguments or "{}"
+                    tool_call_id = getattr(call, 'id', '')
+                # Handle streaming tool call representation
+                elif "function" in call:
+                    function_name = call["function"]["name"]
+                    arguments_str = call["function"]["arguments"]
+                    tool_call_id = call.get("id", "")
+                # Fallback to old format
                 else:
-                    # Fallback for direct dict access (for streaming path)
-                    function_name = call["function_name"]
-                    arguments = call["arguments"]
+                    function_name = call.get("function_name", "")
+                    arguments_str = call.get("arguments", "{}")
+                    tool_call_id = call.get("tool_call_id", "")
 
+                try:
+                    # Parse arguments from JSON string
+                    arguments = json.loads(arguments_str) if arguments_str else {}
+                except json.JSONDecodeError:
+                    arguments = {}
+                    
                 try:
                     result = self.tool_map[function_name].execute(**arguments)
                     tool_response = {
-                        "tool_call_id": call.get("tool_call_id") if isinstance(call, dict) else getattr(call, 'id', ''),
+                        "tool_call_id": tool_call_id,
                         "role": "tool",
                         "name": function_name,
                         "content": result,
@@ -273,7 +315,13 @@ class Agent:
                     error_response = {
                         "error": f"Tool {function_name} failed: {e}"
                     }
-                    tool_response["content"] = error_response
+                    tool_response = {
+                        "tool_call_id": tool_call_id,
+                        "role": "tool",
+                        "name": function_name,
+                        "content": error_response,
+                    }
+                    self.store.save(tool_response, session_id)
 
             # 3. Second API call (without tools), streamed
             args_without_tools: Dict[str, Any] = {
@@ -314,6 +362,5 @@ class Agent:
 
         except Exception as e:
             import traceback
-
             print(traceback.format_exc())
             raise EmptyPayload(f"API error: {e}")

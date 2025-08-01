@@ -9,21 +9,21 @@ def print_before_generation(node: Node, session_id: str):
     print(f"\nStarting generation for node: {node.instruction}")
 
 
-def print_after_generation(node: Node, session_id: str):
-    messages = node.get_history(session_id)
-    m = Markdown(messages[-1]["content"])
+def print_after_generation(node: Node, session_id: str, msg: str):
+    m = Markdown(msg)
     Console().print(m)
 
 
 # Initialize the agent
 agent = Agent(
-    model="devstral-small-2505",
+    model="qwen3-30b-a3b-instruct-2507",
     base_url="http://localhost:1234/v1",
     api_key="ollama",
     system_prompt=(
-        "You are Qwen, a harmless and useful " "assistant created by Alibaba"
+        "You are Qwen, a harmless and useful assistant created by Alibaba"
     ),
 )
+agent.store.del_all_sessions()
 
 # Create nodes in the workflow
 node1 = Node(
@@ -47,6 +47,7 @@ node2 = Node(
     after_generation=print_after_generation,
     temperature=0.3,  # Lower temperature for more focused/structured output
 )
+
 
 # Connect nodes in sequence
 node1.connect_to(node2)
