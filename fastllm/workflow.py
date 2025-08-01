@@ -70,7 +70,9 @@ class Node:
             else:
                 generated = self.agent.generate(**generate_kwargs)
                 if self.after_generation:
-                    self.after_generation(self, session_id, generated["content"])
+                    self.after_generation(
+                        self, session_id, generated["content"]
+                    )
 
             for next_node in self.next_nodes:
                 next_node.ctx[session_id] = self.ctx.get(session_id, {})
@@ -117,7 +119,7 @@ class BooleanNode:
         instruction_true: str = "",
         instruction_false: str = "",
         storage: any = None,
-        propagate_storage: bool = True
+        propagate_storage: bool = True,
     ):
         self.type = "BooleanNode"
         self.ctx = ctx if ctx is not None else {}
