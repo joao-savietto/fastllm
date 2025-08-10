@@ -24,5 +24,7 @@ agent = Agent(
     system_prompt="You are a helpful assistant",
 )
 
-for chunk in agent.generate("Calculate 1900 + 191 using your tool sum_numbers", stream=True):
+for chunk in agent.generate(
+    "Calculate 1900 + 191 using your tool sum_numbers", stream=True
+):
     print(chunk["partial_content"], end="", flush=True)

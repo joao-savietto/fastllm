@@ -3,7 +3,6 @@ from bs4 import BeautifulSoup
 import time
 from collections import Counter
 from fastllm.vectordb import VectorDB
-from fastllm.decorators import run_in_thread
 import re
 from typing import List
 

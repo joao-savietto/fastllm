@@ -4,6 +4,7 @@ import time
 from fastllm.exceptions import EmptyPayload
 from functools import wraps
 from typing import Generator, Any, Callable
+import inspect
 
 import openai
 
@@ -36,9 +37,10 @@ def tool(description: str, pydantic_model: type):
             schema = {"type": "function", "function": openai_format_schema}
             return schema
 
-        @wraps(func)
-        def execute(**kwargs):
-            # Validate and construct the parameters using the Pydantic model
+        def execute(*args, **kwargs):
+            if args:
+                kwargs.update(args[0])
+
             model = pydantic_model(**kwargs)
             result = func(model)
             return json.dumps(result)
