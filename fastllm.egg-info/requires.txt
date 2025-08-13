@@ -1,7 +1,0 @@
-openai>=1.60.1
-chromadb>=0.5.16
-rich>=13.9.4
-redis>=5.2.1
-beautifulsoup4>=4.12.3
-lxml_html_clean>=0.1.1
-pytest>=8.3.4
