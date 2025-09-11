@@ -4,7 +4,7 @@ import time
 from fastllm.exceptions import EmptyPayload
 from functools import wraps
 from typing import Generator, Any, Callable
-import inspect
+import traceback
 
 import openai
 
@@ -98,12 +98,14 @@ def streamable_response(
     def wrapper(*args, **kwargs):
         stream = kwargs.get("stream", False)
         gen = func(*args, **kwargs)
-
+        if isinstance(gen, dict):
+            return gen
         if not stream:
             try:
-                # Get the first (and only) value from generator
+                # Get the first (and only) value from generator                
                 return next(gen)
             except StopIteration:
+                print(traceback.format_exc())
                 raise EmptyPayload("No response generated")
         else:
             return gen
