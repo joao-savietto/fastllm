@@ -1,3 +1,10 @@
+"""
+Workflow module for creating and managing LLM-based workflows.
+
+This module provides classes for building workflow graphs with nodes that can execute
+LLM operations and make conditional decisions based on the results of those operations.
+"""
+
 from .agent import Agent
 
 
@@ -6,12 +13,20 @@ class Node:
     A class representing a node in a workflow with LLMs.
 
     Attributes:
-        ctx (dict): ctx for additional information. Default is None.
-        instructions (str): The instructions to be sent to the LLM. Default is an empty None. You can also pass it on the "run" method.
+        ctx (dict): Context dictionary for additional information. Default is None.
+        instructions (str): The instructions to be sent to the LLM. Default is an empty None. 
+                           You can also pass it on the "run" method.
         agent (Agent): The agent object used for generating responses from the LLM.
         instruction (str or dict): The instruction to be sent to the LLM. Can be either a string or a dictionary.
-        after_generation (callable): A callback function to be called after generating instructions.
-        before_generation (callable): A callback function to be called before generating instructions.
+        after_generation (callable): A callback function called after generating instructions.
+            Expected parameters:
+            - node: The current Node instance
+            - session_id: String identifier for the session
+            - response: Generated response content
+        before_generation (callable): A callback function called before generating instructions.
+            Expected parameters:
+            - node: The current Node instance  
+            - session_id: String identifier for the session
     """  # noqa: E501
 
     def __init__(
@@ -101,13 +116,24 @@ class BooleanNode:
     A class representing a conditional node in a workflow with LLMs.
 
     Attributes:
-        ctx (dict): ctx for additional information. Default is an empty dictionary.
+        ctx (dict): Context dictionary for additional information. Default is an empty dictionary.
         instructions (list): List of instructions to be sent to the LLM. Default is an empty list.
         agent (Agent): The agent object used for generating responses from the LLM.
         instruction (Union[str, dict]): The instruction to be sent to the LLM. Can be either a string or a dictionary.
-        after_generation (callable): A callback function to be called after generating instructions.
-        before_generation (callable): A callback function to be called before generating instructions.
-        condition (callable): A callable that determines which path to take based on the result of its execution.
+        after_generation (callable): A callback function called after generating instructions.
+            Expected parameters:
+            - node: The current Node instance
+            - session_id: String identifier for the session  
+            - response: Generated response content
+        before_generation (callable): A callback function called before generating instructions.
+            Expected parameters:
+            - node: The current Node instance
+            - session_id: String identifier for the session
+        condition (callable): A callable that determines which path to take based on its execution.
+            Expected parameters:
+            - node: The current BooleanNode instance
+            - session_id: String identifier for the session
+            Returns: Boolean indicating whether condition is True or False
         true_nodes (List["Node"]): List of nodes to transition to if the condition is True. Default is an empty list.
         false_nodes (List["Node"]): List of nodes to transition to if the condition is False. Default is an empty list.
     """  # noqa: E501
