@@ -102,7 +102,7 @@ def streamable_response(
             return gen
         if not stream:
             try:
-                # Get the first (and only) value from generator                
+                # Get the first (and only) value from generator
                 return next(gen)
             except StopIteration:
                 print(traceback.format_exc())

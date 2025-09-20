@@ -14,7 +14,7 @@ class Node:
 
     Attributes:
         ctx (dict): Context dictionary for additional information. Default is None.
-        instructions (str): The instructions to be sent to the LLM. Default is an empty None. 
+        instructions (str): The instructions to be sent to the LLM. Default is an empty None.
                            You can also pass it on the "run" method.
         agent (Agent): The agent object used for generating responses from the LLM.
         instruction (str or dict): The instruction to be sent to the LLM. Can be either a string or a dictionary.
@@ -25,7 +25,7 @@ class Node:
             - response: Generated response content
         before_generation (callable): A callback function called before generating instructions.
             Expected parameters:
-            - node: The current Node instance  
+            - node: The current Node instance
             - session_id: String identifier for the session
     """  # noqa: E501
 
@@ -123,7 +123,7 @@ class BooleanNode:
         after_generation (callable): A callback function called after generating instructions.
             Expected parameters:
             - node: The current Node instance
-            - session_id: String identifier for the session  
+            - session_id: String identifier for the session
             - response: Generated response content
         before_generation (callable): A callback function called before generating instructions.
             Expected parameters:

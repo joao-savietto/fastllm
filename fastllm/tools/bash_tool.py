@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, validator
 
 class BashCommandModel(BaseModel):
     """Parameters accepted by the bash‑execution tool."""
+
     command: str = Field(..., description="The bash command to execute")
     cwd: Optional[str] = Field(
         None,
