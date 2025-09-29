@@ -133,6 +133,7 @@ class BooleanNode:
             Expected parameters:
             - node: The current BooleanNode instance
             - session_id: String identifier for the session
+            - last_message: The last generated message by the model. It comes as a dict with keys "content" and "role"
             Returns: Boolean indicating whether condition is True or False
         true_nodes (List["Node"]): List of nodes to transition to if the condition is True. Default is an empty list.
         false_nodes (List["Node"]): List of nodes to transition to if the condition is False. Default is an empty list.
@@ -166,7 +167,8 @@ class BooleanNode:
         Returns:
             The final response from the LLM after all transitions are completed.
         """  # noqa: E501
-        cond = self.condition(self, session_id)
+        history = self.storage.get_all(session_id)
+        cond = self.condition(self, session_id, history[-1])
         nodes = self.true_nodes if cond else self.false_nodes
         for next_node in nodes:
             next_node.propagate_storage = self.propagate_storage

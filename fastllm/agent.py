@@ -19,7 +19,7 @@ from fastllm.exceptions import EmptyPayload
 class Agent:
     def __init__(
         self,
-        model: str = "got4o",
+        model: str = "gpt-5",
         base_url: str = "https://api.openai.com/v1/",
         api_key: str = "",
         tools: List[Any] = None,
@@ -88,7 +88,8 @@ class Agent:
     def _stream_first_api_call(
         self, args_with_tools: Dict[str, Any], session_id: str
     ) -> Generator[Dict[str, Any], None, None]:
-        """Stream the first API call and yield tool calls and assistant content in real time."""
+        """Stream the first API call and yield tool calls and assistant
+        ontent in real time."""
 
         partial_content = ""
         # Dictionary to accumulate tool calls by index
@@ -184,7 +185,8 @@ class Agent:
             image: Optional image data as bytes.
             session_id: Identifier for the chat session.
             stream: Whether to stream responses.
-            params: Additional parameters to pass to the OpenAI API (e.g., temperature, top_p).
+            params: Additional parameters to pass to the OpenAI API
+            (e.g., temperature, top_p).
         """
         # 1. Ensure system prompt is up-to-date
         self._ensure_system_message(session_id)
@@ -217,7 +219,7 @@ class Agent:
                         if delta_content:
                             partial_content += delta_content
                             new_chunk = partial_content[
-                                len(previous_content) :
+                                len(previous_content):
                             ]
                             yield {
                                 "role": "assistant",
@@ -260,7 +262,7 @@ class Agent:
                         and "tool_call" not in chunk
                     ):
                         partial_content += chunk["partial_content"]
-                        new_chunk = partial_content[len(previous_content) :]
+                        new_chunk = partial_content[len(previous_content):]
                         yield {
                             "role": "assistant",
                             "partial_content": new_chunk,
@@ -271,7 +273,8 @@ class Agent:
                         collected_tool_calls = chunk["tool_calls"]
                         yield chunk
                     elif "tool_call" in chunk and chunk["tool_call"]:
-                        # This is a special case for the streaming API that sends tool_call=True
+                        # This is a special case for the streaming API that
+                        # sends tool_call=True
                         if "tool_calls" in chunk:
                             collected_tool_calls = chunk["tool_calls"]
                         yield chunk
@@ -351,7 +354,7 @@ class Agent:
                     )
                     if delta_content:
                         partial_content += delta_content
-                        new_chunk = partial_content[len(previous_content) :]
+                        new_chunk = partial_content[len(previous_content):]
                         yield {
                             "role": "assistant",
                             "partial_content": new_chunk,
