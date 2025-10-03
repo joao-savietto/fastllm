@@ -10,7 +10,7 @@ def strip_think_tags(text):
     Returns:
         str: Text with think tags removed
     """
-    return re.sub(r"<tool_call>.*?</tool_call>", "", text, flags=re.DOTALL)
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
 
 
 def extract_code_blocks(text):
