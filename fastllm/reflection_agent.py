@@ -50,8 +50,12 @@ workflow designed for iterative problem-solving and content generation.
 - If needed, consult a secondary "critic" agent to provide
   additional evaluation
 - If you believe you completed the task and nothing else needs to be done,
-  say "Task Completed"
-  to skip the "Step 3" and "Step 4" entirely
+  say "Task Completed"   to skip the "Step 3" and "Step 4" entirely.
+- If you still need to refine the answer, say "Needs refinements" to
+  go to Step 3 and 4.
+- If you say the words "Task Completed" in this step, the task will be
+  interrupted no matter the context, because it will trigger the finish
+  status.
 
 ### Step 3. Refinement Process
 - Based on reflection insights, generate an improved version of your response
@@ -87,6 +91,8 @@ workflow designed for iterative problem-solving and content generation.
 - Consider tool availability and usage effectiveness throughout the process
 - **VERY IMPORTANT**: On Step 5, Always reply in the same language
   as the task given by the user.
+- On step 2, you should only say the words "Task Completed" if the task is
+  actually completed.
 
 Follow this structured approach while maintaining flexibility to adapt
 based on the specific task requirements and user feedback."""
@@ -231,7 +237,8 @@ class ReflectionAgent:
             "We are now at Step 2: Reflection Phase. Review the results"
             " you got so far and evaluate possible enhancements and fixes. "
             "Write `Task Completed` if you determine that there are no more "
-            "improvements to be done. Don't try to refine before Step 3 begins"
+            "improvements to be done. Or else, Say 'Needs refinements' to go "
+            "to step 3. Don't try to refine before Step 3 begins ."
         )
         step2_reflect = Node(instruction=step2_prompt, **common_params)
 
