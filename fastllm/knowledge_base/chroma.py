@@ -9,12 +9,13 @@ Classes:
     VectorDB: A class for managing vector collections with ChromaDB backend.
 """
 
+from fastllm.knowledge_base.knowledge_interface import KnowledgeBaseInterface
 import chromadb
 from chromadb.utils import embedding_functions
 import uuid
 
 
-class VectorDB:
+class Chroma(KnowledgeBaseInterface):
 
     def __init__(
         self,

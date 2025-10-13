@@ -14,6 +14,7 @@ import openai
 from fastllm.store import ChatStorageInterface, InMemoryChatStorage
 from fastllm.decorators import streamable_response
 from fastllm.exceptions import EmptyPayload
+import traceback
 
 
 class Agent:
@@ -219,7 +220,7 @@ class Agent:
                         if delta_content:
                             partial_content += delta_content
                             new_chunk = partial_content[
-                                len(previous_content):
+                                len(previous_content) :
                             ]
                             yield {
                                 "role": "assistant",
@@ -262,7 +263,7 @@ class Agent:
                         and "tool_call" not in chunk
                     ):
                         partial_content += chunk["partial_content"]
-                        new_chunk = partial_content[len(previous_content):]
+                        new_chunk = partial_content[len(previous_content) :]
                         yield {
                             "role": "assistant",
                             "partial_content": new_chunk,
@@ -354,7 +355,7 @@ class Agent:
                     )
                     if delta_content:
                         partial_content += delta_content
-                        new_chunk = partial_content[len(previous_content):]
+                        new_chunk = partial_content[len(previous_content) :]
                         yield {
                             "role": "assistant",
                             "partial_content": new_chunk,
@@ -372,7 +373,13 @@ class Agent:
                 yield final_msg
 
         except Exception as e:
-            import traceback
-
+            print(traceback.format_exc())
+            print("=========================")
+            print("Content:")
+            print("First request args:", args_with_tools)
+            try:
+                print("Second request args:", args_without_tools)
+            except Exception:
+                pass
             print(traceback.format_exc())
             raise EmptyPayload(f"API error: {e}")

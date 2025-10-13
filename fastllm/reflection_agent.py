@@ -253,13 +253,18 @@ class ReflectionAgent:
         boolean_node_commons = {
             "condition": is_complete,
             "instruction_true": (
-                "We are now at Step 5. Reply the user. It can be"
-                " a short summary of the solution you made, or anything "
-                "else you want the user to see. Notice that this is"
-                " the only part of the reasoning chain they will get to read"
+                "We are now at Step 5: Reply the user. Repeat the"
+                " final solution you made, adding comments explaining it "
+                " and how you reach to that conclusion. You can also say "
+                "anything else you want the user to read. NOTICE that this is"
+                " the only part of the reasoning chain they will get to read."
+                " Remember the original question to better answer it."
+                " Make sure the final answer is complete."
             ),
-            "instruction_false": ("The text `Task Completed` was not found."
-                                  "We are going back to step 2"),
+            "instruction_false": (
+                "The text `Task Completed` was not found."
+                "We are going back to step 2"
+            ),
         }
 
         decision_node = BooleanNode(**boolean_node_commons)
