@@ -190,6 +190,8 @@ class Agent:
             (e.g., temperature, top_p).
         """
         # 1. Ensure system prompt is up-to-date
+        if not isinstance(message, str):
+            raise Exception("Wrong type: message is not str, it is " + type(message) + " content: ", message)
         self._ensure_system_message(session_id)
         msg_content = self._process_user_input(message, image)
         self.store.save(msg_content, session_id)

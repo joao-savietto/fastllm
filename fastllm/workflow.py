@@ -36,7 +36,7 @@ class Node:
         agent: Agent = None,
         after_generation: callable = None,
         before_generation: callable = None,
-        temperature: float = 0.6,
+        temperature: float = None,
         propagate_storage: bool = True,
         streaming: bool = False,
     ):
@@ -75,7 +75,7 @@ class Node:
                 "image": image,
                 "session_id": session_id,
                 "stream": self.streaming,
-                "params": {"temperature": self.temperature},
+                "params": {"temperature": self.temperature} if self.temperature else {},
             }
 
             if self.streaming:
