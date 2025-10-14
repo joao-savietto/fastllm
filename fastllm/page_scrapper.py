@@ -2,7 +2,7 @@ from urllib.request import urlopen
 from bs4 import BeautifulSoup
 import time
 from collections import Counter
-from fastllm.vectordb import VectorDB
+from fastllm.knowledge_base.chroma import VectorDB
 import re
 from typing import List
 

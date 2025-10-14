@@ -320,7 +320,7 @@ class Agent:
                         "tool_call_id": tool_call_id,
                         "role": "tool",
                         "name": function_name,
-                        "content": result,
+                        "content": json.dumps(result) if not isinstance(result, str) else result,
                     }
                     self.store.save(tool_response, session_id)
                 except Exception as e:

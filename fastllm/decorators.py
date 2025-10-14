@@ -43,7 +43,9 @@ def tool(description: str, pydantic_model: type):
 
             model = pydantic_model(**kwargs)
             result = func(model)
-            return json.dumps(result)
+            result = json.dumps(result)
+            assert isinstance(result, str)
+            return result
 
         func.tool_json = tool_json
         func.execute = execute
