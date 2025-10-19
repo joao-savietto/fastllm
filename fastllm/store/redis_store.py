@@ -10,12 +10,15 @@ class RedisChatStorage(ChatStorageInterface):
         host: str = "localhost",
         port: int = 6379,
         db: int = 0,
+        password: str = None,
         redis_client: redis.StrictRedis = None,
     ) -> None:
         if redis_client is not None:
             self.redis_client = redis_client
         else:
-            self.redis_client = redis.StrictRedis(host=host, port=port, db=db)
+            self.redis_client = redis.StrictRedis(
+                host=host, port=port, db=db, password=password
+            )
 
     def save(self, message: dict, session_id: str = "default") -> None:
         """Save a chat message to storage."""
