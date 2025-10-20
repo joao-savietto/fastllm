@@ -280,4 +280,4 @@ class ReflectionAgent:
 
         step1_plan.run(image=image, session_id=session_id)
 
-        return self.agent.store.get_all()
+        return self.agent.store.get_all(session_id=session_id)[-1]
