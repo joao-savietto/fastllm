@@ -9,12 +9,12 @@ Classes:
 from typing import Generator, Dict, Any, List
 import base64
 import json
+import traceback
 
 import openai
 from fastllm.store import ChatStorageInterface, InMemoryChatStorage
 from fastllm.decorators import streamable_response
 from fastllm.exceptions import EmptyPayload
-import traceback
 
 
 class Agent:
@@ -191,7 +191,10 @@ class Agent:
         """
         # 1. Ensure system prompt is up-to-date
         if not isinstance(message, str):
-            raise Exception("Wrong type: message is not str, it is " + type(message) + " content: ", message)
+            raise Exception(
+                "Wrong type: message is not str, it is " + type(message) + 
+                " content: ", message
+            )
         self._ensure_system_message(session_id)
         msg_content = self._process_user_input(message, image)
         self.store.save(msg_content, session_id)
@@ -226,7 +229,7 @@ class Agent:
                             ]
                             yield {
                                 "role": "assistant",
-                                "partial_content": new_chunk,
+                                "partial_content": new_chunk
                             }
                             previous_content = partial_content
                     # Save the final message
@@ -268,7 +271,7 @@ class Agent:
                         new_chunk = partial_content[len(previous_content) :]
                         yield {
                             "role": "assistant",
-                            "partial_content": new_chunk,
+                            "partial_content": new_chunk
                         }
                         previous_content = partial_content
                     elif "tool_calls" in chunk and "tool_call" in chunk:
@@ -326,14 +329,18 @@ class Agent:
                     }
                     self.store.save(tool_response, session_id)
                 except Exception as e:
+                    tb_str = traceback.format_exc()
+                    
                     error_response = {
-                        "error": f"Tool {function_name} failed: {e}"
+                        "error": f"Tool {function_name} failed",
+                        "message": str(e),
+                        "traceback": tb_str
                     }
                     tool_response = {
                         "tool_call_id": tool_call_id,
                         "role": "tool",
                         "name": function_name,
-                        "content": error_response,
+                        "content": json.dumps(error_response)
                     }
                     self.store.save(tool_response, session_id)
 
