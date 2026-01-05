@@ -6,7 +6,7 @@ import subprocess
 from typing import Optional
 
 from fastllm import tool
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class BashCommandModel(BaseModel):
@@ -22,7 +22,7 @@ class BashCommandModel(BaseModel):
         description="Maximum seconds to allow the command to run before terminating",
     )
 
-    @validator("command")
+    @field_validator('command')
     def _non_empty(cls, v):
         if not v.strip():
             raise ValueError("Command must not be empty")

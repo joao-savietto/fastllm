@@ -11,27 +11,14 @@ import openai
 
 def tool(description: str, pydantic_model: type):
     def decorator(func):
-        # Generate the Pydantic model schema
-        pydantic_schema = pydantic_model.schema()
-        # Convert the Pydantic schema to the OpenAI API format
+        # Convert the Pydantic model schema to OpenAI parameters format
+        openapi_parameters = _build_openapi_parameters_from_pydantic(pydantic_model)
         openai_format_schema = {
             "name": func.__name__,
             "description": description,
-            "parameters": {
-                "type": "object",
-                "properties": {},
-                "required": [],
-            },
+            "parameters": openapi_parameters,
         }
 
-        for param, details in pydantic_schema["properties"].items():
-            openai_format_schema["parameters"]["properties"][param] = {
-                "type": details.get("type", "string"),
-                "description": details.get("description", ""),
-            }
-
-            if details.get("required", True):
-                openai_format_schema["parameters"]["required"].append(param)
 
         def tool_json():
             schema = {"type": "function", "function": openai_format_schema}
@@ -59,6 +46,23 @@ def run_in_thread(func):
         threading.Thread(target=func, args=args, kwargs=kwargs).start()
 
     return wrapper
+
+
+def _build_openapi_parameters_from_pydantic(pydantic_model: type) -> dict:
+    pydantic_schema = pydantic_model.model_json_schema()
+    parameters = {
+        "type": "object",
+        "properties": {},
+        "required": [],
+    }
+    for param, details in pydantic_schema["properties"].items():
+        parameters["properties"][param] = {
+            "type": details.get("type", "string"),
+            "description": details.get("description", ""),
+        }
+        if details.get("required", True):
+            parameters["required"].append(param)
+    return parameters
 
 
 def retry(max_attempts=5, delay=2):

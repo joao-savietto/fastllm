@@ -1,6 +1,6 @@
 import requests
 from fastllm import tool
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict, Any
 
 
@@ -19,7 +19,7 @@ class HttpRequestModel(BaseModel):
         None, description="Request body (for POST/PUT/PATCH)"
     )
 
-    @validator("method")
+    @field_validator('method')
     def validate_method(cls, v):
         valid_methods = ["get", "post", "put", "patch", "delete"]
         if v.lower() not in valid_methods:

@@ -29,6 +29,8 @@ class Agent:
     ) -> None:
         self.client = openai.OpenAI(base_url=base_url, api_key=api_key)
         self.model = model
+        self.base_url = base_url
+        self.api_key = api_key
         self.system_prompt = system_prompt
         self.store = store
 
@@ -300,7 +302,6 @@ class Agent:
                     function_name = call.function.name
                     arguments_str = call.function.arguments or "{}"
                     tool_call_id = getattr(call, "id", "")
-                # Handle streaming tool call representation
                 elif "function" in call:
                     function_name = call["function"]["name"]
                     arguments_str = call["function"]["arguments"]
