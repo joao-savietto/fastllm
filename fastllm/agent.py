@@ -6,7 +6,7 @@ Classes:
     Agent: A class to interact with the OpenAI API for generating AI responses.
 """
 
-from typing import Generator, Dict, Any, List
+from typing import Generator, Dict, Any, List, Callable
 import base64
 import json
 import traceback
@@ -23,7 +23,7 @@ class Agent:
         model: str = "gpt-5",
         base_url: str = "https://api.openai.com/v1/",
         api_key: str = "",
-        tools: List[Any] = None,
+        tools: List[Callable] = None,
         system_prompt: str = "",
         store: ChatStorageInterface = InMemoryChatStorage(),
     ) -> None:
@@ -33,7 +33,9 @@ class Agent:
         self.api_key = api_key
         self.system_prompt = system_prompt
         self.store = store
+        self._initialize_tools(tools)
 
+    def _initialize_tools(self, tools):
         if tools is not None and len(tools) > 0:
             self.tools = [tool.tool_json() for tool in tools]
             self.tool_map = {
@@ -180,6 +182,7 @@ class Agent:
         session_id: str = "default",
         stream: bool = True,
         params: Dict[str, Any] = None,
+        tools: List[Callable] = None,
     ) -> Generator[Dict[str, Any], None, None]:
         """Core generation with tool call sequencing and streaming support.
 
@@ -192,6 +195,8 @@ class Agent:
             (e.g., temperature, top_p).
         """
         # 1. Ensure system prompt is up-to-date
+        if tools:
+            self._initialize_tools(tools)
         if not isinstance(message, str):
             raise Exception(
                 "Wrong type: message is not str, it is " + type(message) + 

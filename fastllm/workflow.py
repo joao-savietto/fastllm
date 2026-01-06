@@ -5,6 +5,7 @@ This module provides classes for building workflow graphs with nodes that can ex
 LLM operations and make conditional decisions based on the results of those operations.
 """
 
+from typing import List, Callable
 from .agent import Agent
 
 
@@ -39,6 +40,7 @@ class Node:
         temperature: float = None,
         propagate_storage: bool = True,
         streaming: bool = False,
+        tools: List[Callable] = None,
     ):
         self.type = "Node"
         self.instruction = instruction
@@ -50,6 +52,7 @@ class Node:
         self.temperature = temperature
         self.propagate_storage = propagate_storage
         self.streaming = streaming
+        self.tools = tools
 
     def run(
         self,
@@ -76,6 +79,7 @@ class Node:
                 "session_id": session_id,
                 "stream": self.streaming,
                 "params": {"temperature": self.temperature} if self.temperature else {},
+                "tools": self.tools or None
             }
 
             if self.streaming:
@@ -155,7 +159,7 @@ class BooleanNode:
         self.false_nodes = []
         self.instruction_true = instruction_true
         self.instruction_false = instruction_false
-        self.propagate_storage = True
+        self.propagate_storage = propagate_storage
         self.storage = None
 
     def run(self, session_id: str = "default"):
