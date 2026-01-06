@@ -22,7 +22,7 @@ class BashCommandModel(BaseModel):
         description="Maximum seconds to allow the command to run before terminating",
     )
 
-    @field_validator('command')
+    @field_validator("command")
     def _non_empty(cls, v):
         if not v.strip():
             raise ValueError("Command must not be empty")

@@ -13,16 +13,12 @@ class TestHttpRequestTool(unittest.TestCase):
         valid_methods = ["get", "post", "put", "patch", "delete"]
 
         for method in valid_methods:
-            model = HttpRequestModel(
-                method=method, url="https://api.example.com/test"
-            )
+            model = HttpRequestModel(method=method, url="https://api.example.com/test")
             self.assertEqual(model.method, method)
 
     def test_model_validation_invalid_method(self):
         """Test that invalid HTTP methods raise validation errors"""
-        with self.assertRaises(
-            Exception
-        ):  # Pydantic will raise a validation error
+        with self.assertRaises(Exception):  # Pydantic will raise a validation error
             HttpRequestModel(
                 method="invalid_method", url="https://api.example.com/test"
             )
@@ -30,9 +26,7 @@ class TestHttpRequestTool(unittest.TestCase):
     def test_model_validation_required_fields(self):
         """Test that required fields are properly validated"""
         # This should work - all required fields provided
-        model = HttpRequestModel(
-            method="get", url="https://api.example.com/test"
-        )
+        model = HttpRequestModel(method="get", url="https://api.example.com/test")
         self.assertEqual(model.method, "get")
         self.assertEqual(model.url, "https://api.example.com/test")
 
@@ -158,9 +152,7 @@ class TestHttpRequestTool(unittest.TestCase):
 
     def test_tool_execution_with_different_body_types(self):
         """Test that different body types are handled correctly"""
-        with patch(
-            "fastllm.tools.http_request.requests.request"
-        ) as mock_request:
+        with patch("fastllm.tools.http_request.requests.request") as mock_request:
             # Setup mock response
             mock_response = MagicMock()
             mock_response.status_code = 200

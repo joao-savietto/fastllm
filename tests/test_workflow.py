@@ -51,10 +51,12 @@ class TestRealAPICalls(unittest.TestCase):
         """Test that agent.generate makes a real API call and returns content."""
         # Prepare a minimal chat history
         self.store.save(
-            {"role": "system", "content": "You are a helpful assistant"}, session_id="test"
+            {"role": "system", "content": "You are a helpful assistant"},
+            session_id="test",
         )
         self.store.save(
-            {"role": "user", "content": "Say hello in a friendly way."}, session_id="test"
+            {"role": "user", "content": "Say hello in a friendly way."},
+            session_id="test",
         )
 
         # Call the generate method (non‑streaming)

@@ -5,21 +5,13 @@ from typing import Optional, Dict, Any
 
 
 class HttpRequestModel(BaseModel):
-    method: str = Field(
-        ..., description="HTTP method (get, post, put, patch, delete)"
-    )
+    method: str = Field(..., description="HTTP method (get, post, put, patch, delete)")
     url: str = Field(..., description="URL to make the request to")
-    headers: Optional[Dict[str, str]] = Field(
-        None, description="HTTP headers"
-    )
-    params: Optional[Dict[str, Any]] = Field(
-        None, description="Query parameters"
-    )
-    body: Optional[Any] = Field(
-        None, description="Request body (for POST/PUT/PATCH)"
-    )
+    headers: Optional[Dict[str, str]] = Field(None, description="HTTP headers")
+    params: Optional[Dict[str, Any]] = Field(None, description="Query parameters")
+    body: Optional[Any] = Field(None, description="Request body (for POST/PUT/PATCH)")
 
-    @field_validator('method')
+    @field_validator("method")
     def validate_method(cls, v):
         valid_methods = ["get", "post", "put", "patch", "delete"]
         if v.lower() not in valid_methods:

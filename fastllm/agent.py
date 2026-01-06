@@ -39,8 +39,7 @@ class Agent:
         if tools is not None and len(tools) > 0:
             self.tools = [tool.tool_json() for tool in tools]
             self.tool_map = {
-                t["function"]["name"]: tool
-                for t, tool in zip(self.tools, tools)
+                t["function"]["name"]: tool for t, tool in zip(self.tools, tools)
             }
         else:
             self.tools = []
@@ -64,9 +63,7 @@ class Agent:
                 # Create new session with system message
                 self.store.save(sys_msg, session_id)
 
-    def _process_user_input(
-        self, message: str, image: bytes = None
-    ) -> Dict[str, Any]:
+    def _process_user_input(self, message: str, image: bytes = None) -> Dict[str, Any]:
         """Prepare user input for storage."""
         if not message and not image:
             raise ValueError("Either text or image must be provided")
@@ -82,9 +79,7 @@ class Agent:
             content_parts.append(
                 {
                     "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/png;base64,{base64_str}"
-                    },
+                    "image_url": {"url": f"data:image/png;base64,{base64_str}"},
                 }
             )
 
@@ -157,9 +152,9 @@ class Agent:
                                 "id": tool_calls_accumulator[idx]["id"],
                                 "type": "function",
                                 "function": {
-                                    "name": tool_calls_accumulator[idx][
-                                        "function"
-                                    ]["name"],
+                                    "name": tool_calls_accumulator[idx]["function"][
+                                        "name"
+                                    ],
                                     "arguments": tool_calls_accumulator[idx][
                                         "function"
                                     ]["arguments"],
@@ -199,8 +194,8 @@ class Agent:
             self._initialize_tools(tools)
         if not isinstance(message, str):
             raise Exception(
-                "Wrong type: message is not str, it is " + type(message) + 
-                " content: ", message
+                "Wrong type: message is not str, it is " + type(message) + " content: ",
+                message,
             )
         self._ensure_system_message(session_id)
         msg_content = self._process_user_input(message, image)
@@ -226,18 +221,11 @@ class Agent:
                     for chunk in self.client.chat.completions.create(
                         **args_with_tools, stream=True
                     ):
-                        delta_content = getattr(
-                            chunk.choices[0].delta, "content", ""
-                        )
+                        delta_content = getattr(chunk.choices[0].delta, "content", "")
                         if delta_content:
                             partial_content += delta_content
-                            new_chunk = partial_content[
-                                len(previous_content) :
-                            ]
-                            yield {
-                                "role": "assistant",
-                                "partial_content": new_chunk
-                            }
+                            new_chunk = partial_content[len(previous_content) :]
+                            yield {"role": "assistant", "partial_content": new_chunk}
                             previous_content = partial_content
                     # Save the final message
                     final_msg = {
@@ -267,19 +255,11 @@ class Agent:
             if stream:
                 previous_content = ""
                 collected_tool_calls = []  # Initialize tool call collection
-                for chunk in self._stream_first_api_call(
-                    args_with_tools, session_id
-                ):
-                    if (
-                        "partial_content" in chunk
-                        and "tool_call" not in chunk
-                    ):
+                for chunk in self._stream_first_api_call(args_with_tools, session_id):
+                    if "partial_content" in chunk and "tool_call" not in chunk:
                         partial_content += chunk["partial_content"]
                         new_chunk = partial_content[len(previous_content) :]
-                        yield {
-                            "role": "assistant",
-                            "partial_content": new_chunk
-                        }
+                        yield {"role": "assistant", "partial_content": new_chunk}
                         previous_content = partial_content
                     elif "tool_calls" in chunk and "tool_call" in chunk:
                         # Handle tool call chunks properly
@@ -292,13 +272,9 @@ class Agent:
                             collected_tool_calls = chunk["tool_calls"]
                         yield chunk
             else:
-                first_response = self.client.chat.completions.create(
-                    **args_with_tools
-                )
+                first_response = self.client.chat.completions.create(**args_with_tools)
                 message = first_response.choices[0].message
-                collected_tool_calls = (
-                    getattr(message, "tool_calls", []) or []
-                )
+                collected_tool_calls = getattr(message, "tool_calls", []) or []
 
             # 2. Process tool calls from both stream and non-stream paths
             for call in collected_tool_calls:
@@ -319,9 +295,7 @@ class Agent:
 
                 try:
                     # Parse arguments from JSON string
-                    arguments = (
-                        json.loads(arguments_str) if arguments_str else {}
-                    )
+                    arguments = json.loads(arguments_str) if arguments_str else {}
                 except json.JSONDecodeError:
                     arguments = {}
 
@@ -331,22 +305,26 @@ class Agent:
                         "tool_call_id": tool_call_id,
                         "role": "tool",
                         "name": function_name,
-                        "content": json.dumps(result) if not isinstance(result, str) else result,
+                        "content": (
+                            json.dumps(result)
+                            if not isinstance(result, str)
+                            else result
+                        ),
                     }
                     self.store.save(tool_response, session_id)
                 except Exception as e:
                     tb_str = traceback.format_exc()
-                    
+
                     error_response = {
                         "error": f"Tool {function_name} failed",
                         "message": str(e),
-                        "traceback": tb_str
+                        "traceback": tb_str,
                     }
                     tool_response = {
                         "tool_call_id": tool_call_id,
                         "role": "tool",
                         "name": function_name,
-                        "content": json.dumps(error_response)
+                        "content": json.dumps(error_response),
                     }
                     self.store.save(tool_response, session_id)
 
@@ -365,9 +343,7 @@ class Agent:
                 for chunk in self.client.chat.completions.create(
                     **args_without_tools, stream=True
                 ):
-                    delta_content = getattr(
-                        chunk.choices[0].delta, "content", ""
-                    )
+                    delta_content = getattr(chunk.choices[0].delta, "content", "")
                     if delta_content:
                         partial_content += delta_content
                         new_chunk = partial_content[len(previous_content) :]

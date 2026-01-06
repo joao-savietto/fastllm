@@ -24,9 +24,7 @@ class MoveModel(BaseModel):
 
 
 class FindFilesModel(BaseModel):
-    substring: str = Field(
-        ..., description="Substring to search for in filenames"
-    )
+    substring: str = Field(..., description="Substring to search for in filenames")
 
 
 # File operations

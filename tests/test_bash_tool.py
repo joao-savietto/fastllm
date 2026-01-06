@@ -49,9 +49,7 @@ class TestBashTool(unittest.TestCase):
         a dict with an ``error`` key containing the stringified exception.
         """
         # Arrange – make subprocess.run raise a TimeoutExpired error
-        mock_run.side_effect = subprocess.TimeoutExpired(
-            cmd="sleep 10", timeout=1
-        )
+        mock_run.side_effect = subprocess.TimeoutExpired(cmd="sleep 10", timeout=1)
 
         req = BashCommandModel(command="sleep 10", timeout=1)
         response = run_bash(req)

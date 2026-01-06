@@ -109,7 +109,7 @@ class TestAgentToolManagement(unittest.TestCase):
                 stream=False,
                 tools=[add_numbers],
             )
-        except Exception as e:
+        except Exception:
             # We expect an API error, but the tools should be initialized
             pass
 
@@ -209,9 +209,9 @@ class TestAgentToolManagement(unittest.TestCase):
             )
         except Exception:
             pass
-        
+
         self.assertEqual(len(self.agent.tools), 1)
-        
+
         # Call generate with None tools - should preserve existing
         try:
             self.agent.generate(
@@ -222,7 +222,7 @@ class TestAgentToolManagement(unittest.TestCase):
             )
         except Exception:
             pass
-        
+
         # Tools should still be present
         self.assertEqual(len(self.agent.tools), 1)
         self.assertIn("add_numbers", list(self.agent.tool_map))
@@ -284,7 +284,7 @@ class TestWorkflowToolManagement(unittest.TestCase):
             agent=self.agent,
             tools=[add_numbers, multiply_numbers],
         )
-        
+
         self.assertEqual(len(node.tools), 2)
 
     def test_node_passes_tools_to_agent_generate(self):
@@ -294,17 +294,17 @@ class TestWorkflowToolManagement(unittest.TestCase):
             agent=self.agent,
             tools=[add_numbers],
         )
-        
+
         # Verify node has the tool
         self.assertEqual(len(node.tools), 1)
-        
+
         # When run is called, it should pass tools to generate
         try:
             node.run(session_id="test_session")
-        except Exception as e:
+        except Exception:
             # We expect an API error, but tools should be passed correctly
             pass
-        
+
         # Verify agent has the tool after the call
         self.assertEqual(len(self.agent.tools), 1)
         self.assertIn("add_numbers", list(self.agent.tool_map))
@@ -321,36 +321,37 @@ class TestWorkflowToolManagement(unittest.TestCase):
             )
         except Exception:
             pass
-        
+
         # Create node without tools
         node = Node(
             instruction="Test instruction",
             agent=self.agent,
             tools=None,  # Explicitly no tools
         )
-        
+
         self.assertIsNone(node.tools)
-        
+
         # When run is called, it should pass None to generate
         try:
             node.run(session_id="test_session2")
-        except Exception as e:
+        except Exception:
             # We expect an API error, but the call should work correctly
             pass
 
     def test_boolean_node_with_tools(self):
         """Test that BooleanNode can handle tool management."""
+
         # Create a simple condition function
         def simple_condition(node, session_id, last_message):
             return True
-        
+
         boolean_node = BooleanNode(
             condition=simple_condition,
             instruction_true="True instruction",
             instruction_false="False instruction",
             storage=self.store,
         )
-        
+
         # Connect to a node with tools
         target_node = Node(
             instruction="Target instruction",
@@ -358,7 +359,7 @@ class TestWorkflowToolManagement(unittest.TestCase):
             tools=[add_numbers],
         )
         boolean_node.connect_to_true(target_node)
-        
+
         self.assertEqual(len(target_node.tools), 1)
 
     def test_workflow_with_dynamic_tool_changes(self):
@@ -369,31 +370,31 @@ class TestWorkflowToolManagement(unittest.TestCase):
             agent=self.agent,
             tools=[add_numbers],
         )
-        
+
         node2 = Node(
             instruction="Second step",
             agent=self.agent,
             tools=[multiply_numbers],
         )
-        
+
         # Connect nodes
         node1.connect_to(node2)
-        
+
         # Run first node - should add add_numbers tool to agent
         try:
             node1.run(session_id="workflow_test")
         except Exception:
             pass
-        
+
         self.assertEqual(len(self.agent.tools), 1)
         self.assertIn("multiply_numbers", list(self.agent.tool_map))
-        
+
         # Run second node - should replace with multiply_numbers tool
         try:
             node2.run(session_id="workflow_test")
         except Exception:
             pass
-        
+
         # Should now have only multiply_numbers tool
         self.assertEqual(len(self.agent.tools), 1)
         self.assertIn("multiply_numbers", list(self.agent.tool_map))
@@ -404,6 +405,7 @@ class TestWorkflowToolManagement(unittest.TestCase):
         # Test add_numbers tool
         result = add_numbers.execute(a=5, b=3)
         import json
+
         parsed_result = json.loads(result)
         self.assertEqual(parsed_result["result"], 8.0)
 
@@ -420,7 +422,7 @@ class TestWorkflowToolManagement(unittest.TestCase):
     def test_tool_json_structure(self):
         """Test that tool JSON structure is correct."""
         tool_json = add_numbers.tool_json()
-        
+
         self.assertIn("type", tool_json)
         self.assertEqual(tool_json["type"], "function")
         self.assertIn("function", tool_json)

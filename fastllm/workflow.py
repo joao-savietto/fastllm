@@ -79,7 +79,7 @@ class Node:
                 "session_id": session_id,
                 "stream": self.streaming,
                 "params": {"temperature": self.temperature} if self.temperature else {},
-                "tools": self.tools or None
+                "tools": self.tools or None,
             }
 
             if self.streaming:
@@ -89,9 +89,7 @@ class Node:
             else:
                 generated = self.agent.generate(**generate_kwargs)
                 if self.after_generation:
-                    self.after_generation(
-                        self, session_id, generated["content"]
-                    )
+                    self.after_generation(self, session_id, generated["content"])
 
             for next_node in self.next_nodes:
                 next_node.ctx[session_id] = self.ctx.get(session_id, {})
@@ -186,9 +184,7 @@ class BooleanNode:
                     next_node.agent.store = self.storage
                 next_node.run(
                     instruction=(
-                        self.instruction_true
-                        if cond
-                        else self.instruction_false
+                        self.instruction_true if cond else self.instruction_false
                     ),
                     session_id=session_id,
                 )
