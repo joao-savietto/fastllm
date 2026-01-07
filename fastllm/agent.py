@@ -212,9 +212,10 @@ class Agent:
             "tools": self.tools if self.tools else None,
         }
         if response_format:
-            args_with_tools["response_format"] = pydantic_to_openai_schema(
-                response_format
-            )
+            args_with_tools["response_format"] = {
+                "type": "json_schema",
+                "json_schema": pydantic_to_openai_schema(response_format),
+            }
 
         # Merge with any extra params provided
         if params:
