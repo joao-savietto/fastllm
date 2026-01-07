@@ -10,6 +10,7 @@ from typing import Generator, Dict, Any, List, Callable
 import base64
 import json
 import traceback
+from pydantic import BaseModel
 
 import openai
 from fastllm.store import ChatStorageInterface, InMemoryChatStorage
@@ -178,6 +179,7 @@ class Agent:
         stream: bool = True,
         params: Dict[str, Any] = None,
         tools: List[Callable] = None,
+        response_format: BaseModel = None
     ) -> Generator[Dict[str, Any], None, None]:
         """Core generation with tool call sequencing and streaming support.
 
@@ -186,8 +188,9 @@ class Agent:
             image: Optional image data as bytes.
             session_id: Identifier for the chat session.
             stream: Whether to stream responses.
-            params: Additional parameters to pass to the OpenAI API
-            (e.g., temperature, top_p).
+            params: Additional parameters to pass to the OpenAI API (e.g., temperature, top_p).
+            tools: The tools that can be used in this generation.
+            response_format: The desired format for the model response.
         """
         # 1. Ensure system prompt is up-to-date
         if tools:
@@ -206,6 +209,7 @@ class Agent:
             "messages": self.store.get_all(session_id),
             "model": self.model,
             "tools": self.tools if self.tools else None,
+            "response_format": response_format
         }
 
         # Merge with any extra params provided

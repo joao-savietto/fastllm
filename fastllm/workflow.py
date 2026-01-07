@@ -7,6 +7,7 @@ LLM operations and make conditional decisions based on the results of those oper
 
 from typing import List, Callable
 from .agent import Agent
+from pydantic import BaseModel
 
 
 class Node:
@@ -14,9 +15,7 @@ class Node:
     A class representing a node in a workflow with LLMs.
 
     Attributes:
-        ctx (dict): Context dictionary for additional information. Default is None.
-        instructions (str): The instructions to be sent to the LLM. Default is an empty None.
-                           You can also pass it on the "run" method.
+        ctx (dict): Context dictionary for additional information. Default is an empty dict.
         agent (Agent): The agent object used for generating responses from the LLM.
         instruction (str or dict): The instruction to be sent to the LLM. Can be either a string or a dictionary.
         after_generation (callable): A callback function called after generating instructions.
@@ -28,6 +27,10 @@ class Node:
             Expected parameters:
             - node: The current Node instance
             - session_id: String identifier for the session
+        temperature (float): Temperature setting for LLM generation. Default is None.
+        propagate_storage (bool): Whether to propagate storage between nodes. Default is True.
+        streaming (bool): Whether to stream responses from the LLM. Default is False.
+        tools (List[Callable]): List of tool functions available to the agent. Default is None.
     """  # noqa: E501
 
     def __init__(
@@ -59,12 +62,19 @@ class Node:
         instruction: str = None,
         image: bytes = None,
         session_id: str = "default",
+        formated_output: BaseModel = None
     ):
         """
         Executes the node's workflow, including sending instructions to the LLM and handling responses.
 
         This method will send the current instruction to the LLM using the agent, optionally call a callback before generating,
         and then handle the responses by transitioning to the next nodes with the generated responses.
+
+        Args:
+            instruction (str): The instruction to send to the LLM. Optional, can be provided during initialization or here.
+            image (bytes): Image data to include in the message to the LLM. Default is None.
+            session_id (str): String identifier for the session. Default is "default".
+            formated_output (BaseModel): Pydantic model to format output as. Default is None.
 
         Returns:
             The final response from the LLM after all transitions are completed.
@@ -80,6 +90,7 @@ class Node:
                 "stream": self.streaming,
                 "params": {"temperature": self.temperature} if self.temperature else {},
                 "tools": self.tools or None,
+                "formated_output": formated_output
             }
 
             if self.streaming:
@@ -105,11 +116,22 @@ class Node:
                     next_node.run(session_id=session_id, instruction=message)
 
     def connect_to(self, node):
-        """Connect this node to another node."""
+        """Connect this node to another node.
+
+        Args:
+            node (Node): The node to connect to.
+        """
         self.next_nodes.append(node)
 
     def get_history(self, session_id: str = "default"):
-        """Returns the message history of the agent"""
+        """Returns the message history of the agent
+
+        Args:
+            session_id (str): String identifier for the session. Default is "default".
+
+        Returns:
+            List of messages in the conversation history.
+        """
         return self.agent.store.get_all(session_id)
 
 
@@ -118,25 +140,17 @@ class BooleanNode:
     A class representing a conditional node in a workflow with LLMs.
 
     Attributes:
-        ctx (dict): Context dictionary for additional information. Default is an empty dictionary.
-        instructions (list): List of instructions to be sent to the LLM. Default is an empty list.
-        agent (Agent): The agent object used for generating responses from the LLM.
-        instruction (Union[str, dict]): The instruction to be sent to the LLM. Can be either a string or a dictionary.
-        after_generation (callable): A callback function called after generating instructions.
-            Expected parameters:
-            - node: The current Node instance
-            - session_id: String identifier for the session
-            - response: Generated response content
-        before_generation (callable): A callback function called before generating instructions.
-            Expected parameters:
-            - node: The current Node instance
-            - session_id: String identifier for the session
+        ctx (dict): Context dictionary for additional information. Default is an empty dict.
         condition (callable): A callable that determines which path to take based on its execution.
             Expected parameters:
             - node: The current BooleanNode instance
             - session_id: String identifier for the session
             - last_message: The last generated message by the model. It comes as a dict with keys "content" and "role"
             Returns: Boolean indicating whether condition is True or False
+        instruction_true (str): Instruction to send to LLM if condition evaluates to True.
+        instruction_false (str): Instruction to send to LLM if condition evaluates to False.
+        storage: Storage object for managing message history. Default is None.
+        propagate_storage (bool): Whether to propagate storage between nodes. Default is True.
         true_nodes (List["Node"]): List of nodes to transition to if the condition is True. Default is an empty list.
         false_nodes (List["Node"]): List of nodes to transition to if the condition is False. Default is an empty list.
     """  # noqa: E501
@@ -158,13 +172,16 @@ class BooleanNode:
         self.instruction_true = instruction_true
         self.instruction_false = instruction_false
         self.propagate_storage = propagate_storage
-        self.storage = None
+        self.storage = storage
 
     def run(self, session_id: str = "default"):
         """
         Executes the node's workflow, including sending instructions to the LLM and handling responses based on a conditional check.
 
         This method will execute the condition before proceeding with either the true or false nodes, depending on whether the condition is True or False.
+
+        Args:
+            session_id (str): String identifier for the session. Default is "default".
 
         Returns:
             The final response from the LLM after all transitions are completed.
@@ -190,13 +207,28 @@ class BooleanNode:
                 )
 
     def connect_to_false(self, node):
-        """Connect this node to another node if the condition is False."""
+        """Connect this node to another node if the condition is False.
+
+        Args:
+            node (Node): The node to connect to when condition evaluates to False.
+        """
         self.false_nodes.append(node)
 
     def connect_to_true(self, node):
-        """Connect this node to another node if the condition is True."""
+        """Connect this node to another node if the condition is True.
+
+        Args:
+            node (Node): The node to connect to when condition evaluates to True.
+        """
         self.true_nodes.append(node)
 
     def get_history(self, session_id: str = "default"):
-        """Returns the message history of the agent"""
+        """Returns the message history of the agent
+
+        Args:
+            session_id (str): String identifier for the session. Default is "default".
+
+        Returns:
+            List of messages in the conversation history.
+        """
         return self.storage.get_all(session_id)
