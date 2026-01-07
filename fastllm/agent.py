@@ -193,7 +193,6 @@ class Agent:
             response_format: The desired format for the model response.
         """
         # 1. Ensure system prompt is up-to-date
-        print(tools)
         if tools:
             self._initialize_tools(tools)
         if not isinstance(message, str):
@@ -214,7 +213,9 @@ class Agent:
         if response_format:
             args_with_tools["response_format"] = {
                 "type": "json_schema",
-                "json_schema": pydantic_to_openai_schema(response_format),
+                "json_schema": {
+                    "schema": pydantic_to_openai_schema(response_format),
+                },
             }
 
         # Merge with any extra params provided
