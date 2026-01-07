@@ -62,7 +62,7 @@ class Node:
         instruction: str = None,
         image: bytes = None,
         session_id: str = "default",
-        formated_output: BaseModel = None
+        response_format: BaseModel = None,
     ):
         """
         Executes the node's workflow, including sending instructions to the LLM and handling responses.
@@ -74,7 +74,7 @@ class Node:
             instruction (str): The instruction to send to the LLM. Optional, can be provided during initialization or here.
             image (bytes): Image data to include in the message to the LLM. Default is None.
             session_id (str): String identifier for the session. Default is "default".
-            formated_output (BaseModel): Pydantic model to format output as. Default is None.
+            response_format (BaseModel): Pydantic model to format output as. Default is None.
 
         Returns:
             The final response from the LLM after all transitions are completed.
@@ -90,7 +90,7 @@ class Node:
                 "stream": self.streaming,
                 "params": {"temperature": self.temperature} if self.temperature else {},
                 "tools": self.tools or None,
-                "formated_output": formated_output
+                "response_format": response_format,
             }
 
             if self.streaming:

@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 import openai
 from fastllm.store import ChatStorageInterface, InMemoryChatStorage
-from fastllm.decorators import streamable_response
+from fastllm.decorators import streamable_response, pydantic_to_openai_schema
 from fastllm.exceptions import EmptyPayload
 
 
@@ -179,7 +179,7 @@ class Agent:
         stream: bool = True,
         params: Dict[str, Any] = None,
         tools: List[Callable] = None,
-        response_format: BaseModel = None
+        response_format: BaseModel = None,
     ) -> Generator[Dict[str, Any], None, None]:
         """Core generation with tool call sequencing and streaming support.
 
@@ -193,6 +193,7 @@ class Agent:
             response_format: The desired format for the model response.
         """
         # 1. Ensure system prompt is up-to-date
+        print(tools)
         if tools:
             self._initialize_tools(tools)
         if not isinstance(message, str):
@@ -209,8 +210,11 @@ class Agent:
             "messages": self.store.get_all(session_id),
             "model": self.model,
             "tools": self.tools if self.tools else None,
-            "response_format": response_format
         }
+        if response_format:
+            args_with_tools["response_format"] = pydantic_to_openai_schema(
+                response_format
+            )
 
         # Merge with any extra params provided
         if params:

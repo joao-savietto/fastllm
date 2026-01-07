@@ -3,7 +3,7 @@ from fastllm.decorators import (
     tool,
     retry,
     streamable_response,
-    _build_openapi_parameters_from_pydantic,
+    pydantic_to_openai_schema,
     run_in_thread,
 )
 from pydantic import BaseModel
@@ -32,8 +32,8 @@ def test_execute_returns_json():
     assert parsed == {"name": "test", "age": 42}
 
 
-def test_build_openapi_parameters_from_pydantic():
-    params = _build_openapi_parameters_from_pydantic(DummyModel)
+def testpydantic_to_openai_schema():
+    params = pydantic_to_openai_schema(DummyModel)
     assert set(params["properties"].keys()) == {"name", "age"}
     assert params["properties"]["name"]["type"] == "string"
     assert params["required"] == ["name", "age"]

@@ -12,7 +12,7 @@ import openai
 def tool(description: str, pydantic_model: type):
     def decorator(func):
         # Convert the Pydantic model schema to OpenAI parameters format
-        openapi_parameters = _build_openapi_parameters_from_pydantic(pydantic_model)
+        openapi_parameters = pydantic_to_openai_schema(pydantic_model)
         openai_format_schema = {
             "name": func.__name__,
             "description": description,
@@ -47,7 +47,7 @@ def run_in_thread(func):
     return wrapper
 
 
-def _build_openapi_parameters_from_pydantic(pydantic_model: type) -> dict:
+def pydantic_to_openai_schema(pydantic_model: type) -> dict:
     pydantic_schema = pydantic_model.model_json_schema()
     parameters = {
         "type": "object",

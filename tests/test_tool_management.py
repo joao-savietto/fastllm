@@ -299,11 +299,7 @@ class TestWorkflowToolManagement(unittest.TestCase):
         self.assertEqual(len(node.tools), 1)
 
         # When run is called, it should pass tools to generate
-        try:
-            node.run(session_id="test_session")
-        except Exception:
-            # We expect an API error, but tools should be passed correctly
-            pass
+        node.run(session_id="test_session")
 
         # Verify agent has the tool after the call
         self.assertEqual(len(self.agent.tools), 1)
