@@ -44,6 +44,7 @@ class Node:
         propagate_storage: bool = True,
         streaming: bool = False,
         tools: List[Callable] = None,
+        response_format: BaseModel = None,
     ):
         self.type = "Node"
         self.instruction = instruction
@@ -56,13 +57,13 @@ class Node:
         self.propagate_storage = propagate_storage
         self.streaming = streaming
         self.tools = tools
+        self.response_format = response_format
 
     def run(
         self,
         instruction: str = None,
         image: bytes = None,
         session_id: str = "default",
-        response_format: BaseModel = None,
     ):
         """
         Executes the node's workflow, including sending instructions to the LLM and handling responses.
@@ -90,7 +91,7 @@ class Node:
                 "stream": self.streaming,
                 "params": {"temperature": self.temperature} if self.temperature else {},
                 "tools": self.tools or None,
-                "response_format": response_format,
+                "response_format": self.response_format,
             }
 
             if self.streaming:
