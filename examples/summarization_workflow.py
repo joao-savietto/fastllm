@@ -19,14 +19,17 @@ agent = Agent(
     model="qwen3-30b-a3b-instruct-2507",
     base_url="http://localhost:1234/v1",
     api_key="ollama",
-    system_prompt=("You are Qwen, a harmless and useful assistant created by Alibaba"),
+    system_prompt=(
+        "You are Qwen, a harmless and useful assistant created by Alibaba"
+    ),
 )
 agent.store.del_all_sessions()
 
 # Create nodes in the workflow
 node1 = Node(
     instruction=(
-        "Write a rich and detailed explanation " "of the events of World War II."
+        "Write a rich and detailed explanation "
+        "of the events of World War II."
     ),
     agent=agent,
     before_generation=print_before_generation,
@@ -55,7 +58,11 @@ def main():
     print("\nStarting World War II explanation and summarization workflow")
 
     # First node will generate detailed history
-    node1.run(instruction=("Write a comprehensive overview " "of World War II events."))
+    node1.run(
+        instruction=(
+            "Write a comprehensive overview " "of World War II events."
+        )
+    )
 
 
 if __name__ == "__main__":

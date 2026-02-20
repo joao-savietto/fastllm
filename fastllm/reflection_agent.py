@@ -24,7 +24,6 @@ from fastllm.agent import Agent
 from fastllm.workflow import Node, BooleanNode
 from typing import Generator, Dict, Any
 
-
 REFLECTION_SYSTEM = """# Reflection Agentic Workflow System Prompt
 
 You are an AI assistant operating within a Reflection Agentic
@@ -98,7 +97,9 @@ Follow this structured approach while maintaining flexibility to adapt
 based on the specific task requirements and user feedback."""
 
 
-def is_complete(node: BooleanNode, session_id: str, last_message: dict) -> bool:
+def is_complete(
+    node: BooleanNode, session_id: str, last_message: dict
+) -> bool:
     """
     Determine if refinement iteration should continue based on quality metrics.
 
@@ -260,7 +261,8 @@ class ReflectionAgent:
                 " Make sure the final answer is complete."
             ),
             "instruction_false": (
-                "The text `Task Completed` was not found." "We are going back to step 2"
+                "The text `Task Completed` was not found."
+                "We are going back to step 2"
             ),
         }
 

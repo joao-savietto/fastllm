@@ -69,13 +69,17 @@ class TestAgentToolManagement(unittest.TestCase):
                     if not line or line.startswith("#"):
                         continue
                     key, value = line.split("=", 1)
-                    os.environ.setdefault(key.strip(), value.strip().strip('"'))
+                    os.environ.setdefault(
+                        key.strip(), value.strip().strip('"')
+                    )
         except FileNotFoundError:
             pass  # Use existing environment variables
 
         # Retrieve configuration from environment
         cls.api_key = os.getenv("OPENAI_API_KEY")
-        cls.base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        cls.base_url = os.getenv(
+            "OPENAI_BASE_URL", "https://api.openai.com/v1"
+        )
         cls.model = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
 
     def setUp(self):
@@ -116,7 +120,9 @@ class TestAgentToolManagement(unittest.TestCase):
         # Verify tools were added
         self.assertEqual(len(self.agent.tools), 1)
         self.assertIn("add_numbers", list(self.agent.tool_map))
-        self.assertEqual(self.agent.tools[0]["function"]["name"], "add_numbers")
+        self.assertEqual(
+            self.agent.tools[0]["function"]["name"], "add_numbers"
+        )
 
     def test_agent_adds_multiple_tools_dynamically(self):
         """Test that multiple tools can be added dynamically."""
@@ -257,13 +263,17 @@ class TestWorkflowToolManagement(unittest.TestCase):
                     if not line or line.startswith("#"):
                         continue
                     key, value = line.split("=", 1)
-                    os.environ.setdefault(key.strip(), value.strip().strip('"'))
+                    os.environ.setdefault(
+                        key.strip(), value.strip().strip('"')
+                    )
         except FileNotFoundError:
             pass  # Use existing environment variables
 
         # Retrieve configuration from environment
         cls.api_key = os.getenv("OPENAI_API_KEY")
-        cls.base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        cls.base_url = os.getenv(
+            "OPENAI_BASE_URL", "https://api.openai.com/v1"
+        )
         cls.model = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
 
     def setUp(self):

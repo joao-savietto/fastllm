@@ -1,3 +1,8 @@
+"""FastLLM decorator utilities.
+
+This module provides helper decorators and functions used throughout the FastLLM library. The primary purpose is to expose a convenient way for user code to declare OpenAI function calls via ``@tool`` while automatically handling schema conversion, threading helpers, retry logic, and streaming response adaptation.
+"""
+
 import json
 import threading
 import time
@@ -10,6 +15,23 @@ import openai
 
 
 def tool(description: str, pydantic_model: type):
+    """Decorator that registers a function as an OpenAI tool.
+
+    Parameters
+    ----------
+    description : str
+        Human‑readable description for the function – shown in the function call metadata.
+    pydantic_model : type
+        A Pydantic ``BaseModel`` subclass describing the expected arguments.  The schema is automatically converted into the JSON format required by the OpenAI API.
+
+    Returns
+    -------
+    Callable
+        The original function wrapped with two additional attributes:
+        ``tool_json`` – returns the OpenAI *function* schema and ``execute`` – serialises the call arguments, invokes the original function, and returns a JSON string.
+
+    """
+
     def decorator(func):
         # Convert the Pydantic model schema to OpenAI parameters format
         openapi_parameters = pydantic_to_openai_schema(pydantic_model)
@@ -41,6 +63,12 @@ def tool(description: str, pydantic_model: type):
 
 
 def run_in_thread(func):
+    """Run ``func`` asynchronously in a new thread.
+
+    The wrapper starts the thread immediately and returns nothing; it is intended for fire‑and‑forget side effects such as logging or background cleanup.
+
+    """
+
     def wrapper(*args, **kwargs):
         threading.Thread(target=func, args=args, kwargs=kwargs).start()
 
@@ -48,14 +76,11 @@ def run_in_thread(func):
 
 
 def pydantic_to_openai_schema(pydantic_model: type) -> dict:
-    """
-    Convert a Pydantic model schema to OpenAI API compatible format,
-    properly handling nested structures with references.
+    """Convert a Pydantic model into OpenAI function‑parameter schema.
 
-    This function handles the specific issue where nested structures fail
-    due to unresolved $ref fields in Pydantic schemas.
-    """
+    The conversion handles nested references (``$ref``) and array items.  It produces a dictionary compatible with ``openai.FunctionSchema`` used in tool calls.
 
+    """
     # Get pydantic schema including definitions
     pydantic_schema = pydantic_model.model_json_schema()
 
@@ -91,12 +116,15 @@ def pydantic_to_openai_schema(pydantic_model: type) -> dict:
                 # If it's a nested object with properties
                 if "properties" in resolved_schema:
                     result["properties"] = {}
-                    for inner_prop_name, inner_prop_details in resolved_schema[
-                        "properties"
-                    ].items():
+                    for (
+                        inner_prop_name,
+                        inner_prop_details,
+                    ) in resolved_schema["properties"].items():
                         result["properties"][inner_prop_name] = {
                             "type": inner_prop_details.get("type", "string"),
-                            "description": inner_prop_details.get("description", ""),
+                            "description": inner_prop_details.get(
+                                "description", ""
+                            ),
                         }
                 return result
             except Exception:
@@ -113,7 +141,9 @@ def pydantic_to_openai_schema(pydantic_model: type) -> dict:
             and "$ref" in prop_details["items"]
         ):
             try:
-                resolved_items = resolve_reference(prop_details["items"], all_defs)
+                resolved_items = resolve_reference(
+                    prop_details["items"], all_defs
+                )
 
                 result = {
                     "type": "array",
@@ -133,11 +163,15 @@ def pydantic_to_openai_schema(pydantic_model: type) -> dict:
                     ].items():
                         result["items"]["properties"][inner_prop_name] = {
                             "type": inner_prop_details.get("type", "string"),
-                            "description": inner_prop_details.get("description", ""),
+                            "description": inner_prop_details.get(
+                                "description", ""
+                            ),
                         }
                 else:
                     # Simple type or primitive
-                    result["items"] = {"type": resolved_items.get("type", "string")}
+                    result["items"] = {
+                        "type": resolved_items.get("type", "string")
+                    }
 
                 return result
             except Exception:
@@ -157,14 +191,19 @@ def pydantic_to_openai_schema(pydantic_model: type) -> dict:
                 }
 
                 # For complex nested objects (non-references)
-                if "properties" in prop_details and prop_details["type"] == "object":
+                if (
+                    "properties" in prop_details
+                    and prop_details["type"] == "object"
+                ):
                     result["properties"] = {}
                     for inner_prop_name, inner_prop_details in prop_details[
                         "properties"
                     ].items():
                         # Recursive handling of nested properties
                         result["properties"][inner_prop_name] = (
-                            convert_property_details(inner_prop_details, all_defs)
+                            convert_property_details(
+                                inner_prop_details, all_defs
+                            )
                         )
 
                 return result
@@ -178,7 +217,11 @@ def pydantic_to_openai_schema(pydantic_model: type) -> dict:
     # Main conversion logic
     defs = pydantic_schema.get("$defs", {})
 
-    openai_format_schema = {"type": "object", "properties": {}, "required": []}
+    openai_format_schema = {
+        "type": "object",
+        "properties": {},
+        "required": [],
+    }
 
     # Convert all properties with proper reference resolution
     for prop_name, prop_details in pydantic_schema["properties"].items():
@@ -193,6 +236,17 @@ def pydantic_to_openai_schema(pydantic_model: type) -> dict:
 
 
 def retry(max_attempts=5, delay=2):
+    """Retry decorator for transient OpenAI errors.
+
+    Parameters
+    ----------
+    max_attempts : int, optional
+        Maximum number of attempts before giving up.  Defaults to 5.
+    delay : int, optional
+        Seconds to wait between attempts.  Defaults to 2.
+
+    """
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -219,13 +273,10 @@ def retry(max_attempts=5, delay=2):
 def streamable_response(
     func: Callable[..., Generator],
 ) -> Callable[..., Any]:
-    """
-    Decorator to make a generator-returning function behave like:
-      - Returns a generator when `stream=True`
-      - Returns the first (and only) value when `stream=False`
+    """Decorator that adapts a generator to a simple response interface.
 
-    Useful for APIs where you want one interface
-    that adapts based on stream flag.
+    The wrapped function can be called with ``stream=True`` to receive the raw generator, or without the flag to get only the first yielded value.  When the underlying function returns a plain dict, it is passed through unchanged.
+
     """
 
     def wrapper(*args, **kwargs):
