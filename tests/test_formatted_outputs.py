@@ -6,7 +6,9 @@ Tests verify that agents can generate responses in specific Pydantic models form
 
 import os
 import unittest
+
 from pydantic import BaseModel, Field
+
 from fastllm.agent import Agent
 from fastllm.store import InMemoryChatStorage
 

@@ -1,8 +1,9 @@
-import sqlite3
 import json
-from typing import List, Dict, Any
 import os
 import re
+import sqlite3
+from typing import Any, Dict, List
+
 from fastllm.knowledge_base.knowledge_interface import KnowledgeBaseInterface
 
 

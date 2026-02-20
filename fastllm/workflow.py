@@ -5,9 +5,11 @@ This module provides classes for building workflow graphs with nodes that can ex
 LLM operations and make conditional decisions based on the results of those operations.
 """
 
-from typing import List, Callable
-from .agent import Agent
+from typing import Callable, List
+
 from pydantic import BaseModel
+
+from .agent import Agent
 
 
 class Node:

@@ -5,11 +5,13 @@ Tests verify that tools can be added and removed on demand without using API moc
 
 import os
 import unittest
+
 from pydantic import BaseModel, Field
+
 from fastllm.agent import Agent
-from fastllm.workflow import Node, BooleanNode
 from fastllm.decorators import tool
 from fastllm.store import InMemoryChatStorage
+from fastllm.workflow import BooleanNode, Node
 
 
 # Test tools for use in tests

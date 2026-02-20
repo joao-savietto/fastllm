@@ -1,11 +1,11 @@
+import subprocess
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from pydantic import ValidationError
 
 # Import the tool and its request model
-from fastllm.tools.bash_tool import run_bash, BashCommandModel
-import subprocess
+from fastllm.tools.bash_tool import BashCommandModel, run_bash
 
 
 class TestBashTool(unittest.TestCase):

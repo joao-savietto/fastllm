@@ -6,12 +6,13 @@ This module provides helper decorators and functions used throughout the FastLLM
 import json
 import threading
 import time
-from fastllm.exceptions import EmptyPayload
-from functools import wraps
-from typing import Generator, Any, Callable
 import traceback
+from functools import wraps
+from typing import Any, Callable, Generator
 
 import openai
+
+from fastllm.exceptions import EmptyPayload
 
 
 def tool(description: str, pydantic_model: type):

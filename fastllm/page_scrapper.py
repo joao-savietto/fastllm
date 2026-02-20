@@ -1,10 +1,12 @@
-from urllib.request import urlopen
-from bs4 import BeautifulSoup
+import re
 import time
 from collections import Counter
-from fastllm.knowledge_base.chroma import VectorDB
-import re
 from typing import List
+from urllib.request import urlopen
+
+from bs4 import BeautifulSoup
+
+from fastllm.knowledge_base.chroma import VectorDB
 
 
 def longest_repeated_substring(s: str) -> str:

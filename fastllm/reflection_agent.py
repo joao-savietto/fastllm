@@ -20,9 +20,10 @@ components
 to structure the execution flow and make decisions based on quality metrics.
 """
 
+from typing import Any, Dict, Generator
+
 from fastllm.agent import Agent
-from fastllm.workflow import Node, BooleanNode
-from typing import Generator, Dict, Any
+from fastllm.workflow import BooleanNode, Node
 
 REFLECTION_SYSTEM = """# Reflection Agentic Workflow System Prompt
 

@@ -1,7 +1,9 @@
+from typing import Any, Dict, Optional
+
 import requests
-from fastllm import tool
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, Dict, Any
+
+from fastllm import tool
 
 
 class HttpRequestModel(BaseModel):

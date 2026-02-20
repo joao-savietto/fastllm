@@ -1,7 +1,9 @@
 import os
 import shutil
-from fastllm import tool
+
 from pydantic import BaseModel, Field
+
+from fastllm import tool
 
 
 # Common models for shared parameters

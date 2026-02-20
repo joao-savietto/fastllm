@@ -1,8 +1,10 @@
-import unittest
-from unittest.mock import patch, MagicMock
-from requests.structures import CaseInsensitiveDict
-from fastllm.tools.http_request import http_request, HttpRequestModel
 import json
+import unittest
+from unittest.mock import MagicMock, patch
+
+from requests.structures import CaseInsensitiveDict
+
+from fastllm.tools.http_request import HttpRequestModel, http_request
 
 
 class TestHttpRequestTool(unittest.TestCase):

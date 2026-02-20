@@ -6,16 +6,17 @@ Classes:
     Agent: A class to interact with the OpenAI API for generating AI responses.
 """
 
-from typing import Generator, Dict, Any, List, Callable
 import base64
 import json
 import traceback
-from pydantic import BaseModel
+from typing import Any, Callable, Dict, Generator, List
 
 import openai
-from fastllm.store import ChatStorageInterface, InMemoryChatStorage
-from fastllm.decorators import streamable_response, pydantic_to_openai_schema
+from pydantic import BaseModel
+
+from fastllm.decorators import pydantic_to_openai_schema, streamable_response
 from fastllm.exceptions import EmptyPayload
+from fastllm.store import ChatStorageInterface, InMemoryChatStorage
 
 
 class Agent:

@@ -1,13 +1,10 @@
-import pytest
-from fastllm.decorators import (
-    tool,
-    retry,
-    streamable_response,
-    pydantic_to_openai_schema,
-    run_in_thread,
-)
-from pydantic import BaseModel
 import json
+
+import pytest
+from pydantic import BaseModel
+
+from fastllm.decorators import (pydantic_to_openai_schema, retry,
+                                run_in_thread, streamable_response, tool)
 
 
 class DummyModel(BaseModel):

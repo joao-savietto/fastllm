@@ -1,5 +1,6 @@
-from fastllm import Agent, tool
 from pydantic import BaseModel, Field
+
+from fastllm import Agent, tool
 
 
 class SumRequest(BaseModel):

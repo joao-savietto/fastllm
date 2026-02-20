@@ -1,4 +1,4 @@
-openai>=1.60.1
+openai>=2.21.0
 chromadb>=0.5.16
 rich>=13.9.4
 redis>=5.2.1

@@ -1,11 +1,10 @@
+from pydantic import BaseModel, Field
 from rich.console import Console
 from rich.markdown import Markdown
 
-from pydantic import BaseModel, Field
-
 from fastllm.agent import Agent
-from fastllm.workflow import BooleanNode, Node
 from fastllm.decorators import tool
+from fastllm.workflow import BooleanNode, Node
 
 
 # Create a Pydantic model for the BMI calculation request

@@ -1,6 +1,7 @@
 import json
 import os
-from typing import List, Dict
+from typing import Dict, List
+
 from fastllm.store.storage_interface import ChatStorageInterface
 
 

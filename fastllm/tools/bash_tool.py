@@ -5,8 +5,9 @@
 import subprocess
 from typing import Optional
 
-from fastllm import tool
 from pydantic import BaseModel, Field, field_validator
+
+from fastllm import tool
 
 
 class BashCommandModel(BaseModel):
