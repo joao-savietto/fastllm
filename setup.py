@@ -12,7 +12,7 @@ def read_requirements(file_path):
 
 setup(
     name="fastllm",
-    version="1.6.3",
+    version="1.6.4",
     packages=find_packages(),
     install_requires=read_requirements("requirements.txt"),
     entry_points={
