@@ -5,3 +5,5 @@ redis>=5.2.1
 beautifulsoup4>=4.12.3
 lxml_html_clean>=0.1.1
 pytest>=8.0
+sympy>=1.14.0
+antlr4-python3-runtime==4.11.1
