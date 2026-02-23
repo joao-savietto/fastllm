@@ -7,3 +7,4 @@ lxml_html_clean>=0.1.1
 pytest>=8.0
 sympy>=1.14.0
 antlr4-python3-runtime==4.11.1
+mcp>=1.26.0

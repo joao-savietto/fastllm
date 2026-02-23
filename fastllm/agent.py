@@ -9,7 +9,7 @@ Classes:
 import base64
 import json
 import traceback
-from typing import Any, Callable, Dict, Generator, List
+from typing import Any, Callable, Dict, Generator, List, Optional
 
 import openai
 from pydantic import BaseModel
@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from fastllm.decorators import pydantic_to_openai_schema, streamable_response
 from fastllm.exceptions import EmptyPayload
 from fastllm.store import ChatStorageInterface, InMemoryChatStorage
+from fastllm.mcp_client import MCPClient
 
 
 class Agent:
@@ -24,10 +25,11 @@ class Agent:
         self,
         model: str = "gpt-5",
         base_url: str = "https://api.openai.com/v1/",
-        api_key: str = "",
+        api_key: str = "some-key",
         tools: List[Callable] = None,
         system_prompt: str = "",
-        store: ChatStorageInterface = InMemoryChatStorage(),
+        store: ChatStorageInterface = None,
+        mcp_config_path: Optional[str] = None,
     ) -> None:
         self.client = openai.OpenAI(base_url=base_url, api_key=api_key)
         self.model = model
@@ -35,7 +37,26 @@ class Agent:
         self.api_key = api_key
         self.system_prompt = system_prompt
         self.store = store
-        self._initialize_tools(tools)
+        if not store:
+            self.store = InMemoryChatStorage()
+        self.mcp_client = None
+
+        initial_tools = tools or []
+        
+        if mcp_config_path:
+            try:
+                self.mcp_client = MCPClient(mcp_config_path)
+                self.mcp_client.start()
+                initial_tools.extend(self.mcp_client.get_tools())
+            except Exception as e:
+                print(f"Failed to initialize MCP client: {e}")
+
+        self._initialize_tools(initial_tools)
+
+    def shutdown(self):
+        """Cleanly shutdown resources like MCP client."""
+        if self.mcp_client:
+            self.mcp_client.stop()
 
     def _initialize_tools(self, tools):
         if tools is not None and len(tools) > 0:
