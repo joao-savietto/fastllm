@@ -20,7 +20,8 @@ components
 to structure the execution flow and make decisions based on quality metrics.
 """
 
-from typing import Any, Dict, Generator
+from collections.abc import Callable
+from typing import Any
 
 from fastllm.agent import Agent
 from fastllm.workflow import BooleanNode, Node
@@ -98,9 +99,7 @@ Follow this structured approach while maintaining flexibility to adapt
 based on the specific task requirements and user feedback."""
 
 
-def is_complete(
-    node: BooleanNode, session_id: str, last_message: dict
-) -> bool:
+def is_complete(node: BooleanNode, session_id: str, last_message: dict) -> bool:
     """
     Determine if refinement iteration should continue based on quality metrics.
 
@@ -169,12 +168,12 @@ class ReflectionAgent:
     def generate(
         self,
         message: str = "",
-        image: bytes = None,
+        image: bytes | None = None,
         session_id: str = "default",
         stream: bool = True,
-        after_generation: callable = None,
-        before_generation: callable = None,
-    ) -> Generator[Dict[str, Any], None, None]:
+        after_generation: Callable | None = None,
+        before_generation: Callable | None = None,
+    ) -> dict[str, Any]:
         """
         Generate a response through the reflection-based workflow process.
 
@@ -262,8 +261,7 @@ class ReflectionAgent:
                 " Make sure the final answer is complete."
             ),
             "instruction_false": (
-                "The text `Task Completed` was not found."
-                "We are going back to step 2"
+                "The text `Task Completed` was not found.We are going back to step 2"
             ),
         }
 
@@ -278,6 +276,9 @@ class ReflectionAgent:
         decision_node.connect_to_false(step3_refine)
         decision_node.connect_to_true(finalization_node)
 
-        step1_plan.run(image=image, session_id=session_id)
+        if image is not None:
+            step1_plan.run(image=image, session_id=session_id)
+        else:
+            step1_plan.run(session_id=session_id)
 
         return self.agent.store.get_all(session_id=session_id)[-1]

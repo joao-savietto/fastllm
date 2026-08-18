@@ -3,7 +3,6 @@
 
 # 🚀 FastLLM
 
-
 FastLLM é uma biblioteca Python com ënfase em leveza e simplicidade de uso, com o objetivo de ajudar a desenvolver projetos baseados em LLMs (Large Language Models). Ele fornece uma interface simples para interagir com provedores compatíveis com OpenAI, incluindo APIs de modelos open-source como Ollama e LM Studio.
 O nome desta biblioteca foi inspirado no FastAPI, devido a sua sintaxe limpa e a facilidade de se prototipar uma nova API.
 
@@ -11,12 +10,13 @@ O nome desta biblioteca foi inspirado no FastAPI, devido a sua sintaxe limpa e a
 
 ## 🌟 Funcionalidades
 
-*   💻 Suporte a provedores compatíveis com OpenAI: FastLLM se integra perfeitamente com APIs populares do OpenAI, permitindo que você aproveite o poder dos LLMs em seus aplicativos.
-*   🔧 Integração fácil: FastLLM fornece uma API Pythonica que torna fácil incorporar a funcionalidade de LLM nos seus projetos.
-*   🛠️ Personalização: Com FastLLM, você pode adicionar facilmente ferramentas e funções (tool calling) personalizadas para estender as capacidades do seu aplicativo baseado em LLM. Utilizamos Pydantic para representar e validar inputs para as suas funções de forma simples e familiar.
-*   🔄 Workflows: Crie e gerencie sequências de tarefas ou operações, permitindo interações e automações complexas em seus aplicativos.
-*   🧠 **Reflection Agent**: Utilize agentes capazes de planejar, executar, refletir e refinar suas ações (padrão ReAct/Reflexion) para resolver problemas difíceis.
-*   🔌 **Model Context Protocol (MCP)**: Transforme seu agente em um cliente MCP, conectando-se a servidores de ferramentas externos via configuração simples.
+* 💻 Suporte a provedores compatíveis com OpenAI: FastLLM se integra perfeitamente com APIs populares do OpenAI, permitindo que você aproveite o poder dos LLMs em seus aplicativos.
+* 🔧 Integração fácil: FastLLM fornece uma API Pythonica que torna fácil incorporar a funcionalidade de LLM nos seus projetos.
+* 🛠️ Personalização: Com FastLLM, você pode adicionar facilmente ferramentas e funções (tool calling) personalizadas para estender as capacidades do seu aplicativo baseado em LLM. Utilizamos Pydantic para representar e validar inputs para as suas funções de forma simples e familiar.
+* 🔄 Workflows: Crie e gerencie sequências de tarefas ou operações, permitindo interações e automações complexas em seus aplicativos.
+* 🧠 **Reflection Agent**: Utilize agentes capazes de planejar, executar, refletir e refinar suas ações (padrão ReAct/Reflexion) para resolver problemas difíceis.
+* 🔌 **Model Context Protocol (MCP)**: Transforme seu agente em um cliente MCP, conectando-se a servidores de ferramentas externos via configuração simples.
+* 🖼️ **Imagens em respostas de ferramentas**: Suas ferramentas podem devolver imagens (bytes, base64, data URI ou URL) ao modelo na resposta do tool call. O FastLLM monta automaticamente a mensagem de tool com partes `image_url` (requer modelo com visão).
 
 ---
 
@@ -68,11 +68,67 @@ for chunk in agent.generate("Calculate 1900 + 191 using your tool sum_numbers", 
 
 ```
 
+### Imagens em respostas de ferramentas
+
+Suas ferramentas podem devolver imagens ao modelo na resposta do tool call. Basta retornar:
+
+* `bytes` / `bytearray` diretamente (codificados como data URI PNG), ou
+* um `dict` com a chave `"image"` (aceita bytes, string base64, data URI ou URL http(s)).
+
+O FastLLM monta automaticamente a mensagem de tool com partes de conteúdo no formato esperado pelos provedores compatíveis com OpenAI:
+
+```python
+[
+    {"type": "text", "text": "..."},
+    {"type": "image_url", "image_url": {"url": "data:image/png;base64,..."}},
+]
+```
+
+```python
+import base64
+
+from pydantic import BaseModel, Field
+
+from fastllm import Agent, tool
+
+# PNG 1x1 vermelho (troque pelos bytes da sua imagem)
+TINY_RED_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+    "AAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+)
+
+
+class ShowImageRequest(BaseModel):
+    reason: str = Field(description="Why the image is being requested")
+
+
+@tool(description="Returns a small image to inspect.", pydantic_model=ShowImageRequest)
+def show_image(request: ShowImageRequest):
+    # a chave "image" aceita bytes, base64, data URI ou URL http(s)
+    return {"image": TINY_RED_PNG, "note": "a small red image"}
+
+
+agent = Agent(
+    model="qwen3-30b-a3b-instruct-2507",
+    base_url="http://localhost:1234/v1",
+    api_key="api-key",
+)
+
+for chunk in agent.generate(
+    "Use the show_image tool to get the image, then tell me its color.",
+    tools=[show_image],
+):
+    print(chunk.get("partial_content", ""), end="", flush=True)
+# -> "The image is red."
+```
+
+> **Nota:** o modelo precisa suportar visão e o servidor precisa aceitar partes de imagem em mensagens de tool (Ollama e LM Studio aceitam). Modelos apenas de texto vão ignorar ou rejeitar as imagens. Veja também `examples/tool_image_response.py`.
+
 ### Workflow
 
-- Workflows permitem que você crie uma fluxo de prompts que é executado sequencialmente.
-- Você pode definit tools diferentes para cada etapa do fluxo.
-- Um **Node** representa uma etapa do fluxo.
+* Workflows permitem que você crie uma fluxo de prompts que é executado sequencialmente.
+* Você pode definit tools diferentes para cada etapa do fluxo.
+* Um **Node** representa uma etapa do fluxo.
 
 ```python
 from fastllm import Agent, Node
@@ -101,7 +157,7 @@ step1.run()
 ```
 
 ### BooleanNode
-- O **BooleanNode** permite fazer um desvio no fluxo caso uma condição específica seja atendida. Veja o exemplo abaixo:
+* O **BooleanNode** permite fazer um desvio no fluxo caso uma condição específica seja atendida. Veja o exemplo abaixo:
 
 ```python
 from pydantic import BaseModel, Field
@@ -250,7 +306,7 @@ Para usar o MCP, crie um arquivo de configuração JSON (ex: `mcp_config.json`) 
 
 FastLLM é liberado sob a Licença MIT. Consulte o arquivo LICENSE para mais informações.
 
-## 💖 Agradecimentos!
+## 💖 Agradecimentos
 
 Esperamos que você ache FastLLM útil em seus projetos baseados em LLM!
 

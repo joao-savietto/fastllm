@@ -7,17 +7,23 @@ Classes:
 """
 
 import base64
+import inspect
 import json
 import traceback
-from typing import Any, Callable, Dict, Generator, List, Optional
+from collections.abc import Callable, Generator
+from typing import Any
 
 import openai
 from pydantic import BaseModel
 
-from fastllm.decorators import pydantic_to_openai_schema, streamable_response
+from fastllm.decorators import (
+    build_image_data_uri,
+    pydantic_to_openai_schema,
+    streamable_response,
+)
 from fastllm.exceptions import EmptyPayload
-from fastllm.store import ChatStorageInterface, InMemoryChatStorage
 from fastllm.mcp_client import MCPClient
+from fastllm.store import ChatStorageInterface, InMemoryChatStorage
 from fastllm.tool_healing import heal_tool_calls, strip_tool_call_markup
 
 
@@ -27,10 +33,10 @@ class Agent:
         model: str = "gpt-5",
         base_url: str = "https://api.openai.com/v1/",
         api_key: str = "some-key",
-        tools: List[Callable] = None,
+        tools: list[Callable] | None = None,
         system_prompt: str = "",
-        store: ChatStorageInterface = None,
-        mcp_config_path: Optional[str] = None,
+        store: ChatStorageInterface | None = None,
+        mcp_config_path: str | None = None,
         max_tool_rounds: int = 10,
     ) -> None:
         self.client = openai.OpenAI(base_url=base_url, api_key=api_key)
@@ -38,10 +44,10 @@ class Agent:
         self.base_url = base_url
         self.api_key = api_key
         self.system_prompt = system_prompt
-        self.store = store
+        self.store: ChatStorageInterface = (
+            store if store is not None else InMemoryChatStorage()
+        )
         self.max_tool_rounds = max_tool_rounds
-        if not store:
-            self.store = InMemoryChatStorage()
         self.mcp_client = None
 
         initial_tools = tools or []
@@ -66,7 +72,7 @@ class Agent:
             self.tools = [tool.tool_json() for tool in tools]
             self.tool_map = {
                 t["function"]["name"]: tool
-                for t, tool in zip(self.tools, tools)
+                for t, tool in zip(self.tools, tools, strict=False)
             }
         else:
             self.tools = []
@@ -91,8 +97,8 @@ class Agent:
                 self.store.save(sys_msg, session_id)
 
     def _process_user_input(
-        self, message: str, image: bytes = None
-    ) -> Dict[str, Any]:
+        self, message: str, image: bytes | None = None
+    ) -> dict[str, Any]:
         """Prepare user input for storage."""
         if not message and not image:
             raise ValueError("Either text or image must be provided")
@@ -108,17 +114,101 @@ class Agent:
             content_parts.append(
                 {
                     "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/png;base64,{base64_str}"
-                    },
+                    "image_url": {"url": f"data:image/png;base64,{base64_str}"},
                 }
             )
 
         return {"role": "user", "content": content_parts}
 
+    @staticmethod
+    def _is_image_value(value: Any) -> bool:
+        """Whether a tool result value carries image data.
+
+        Image data is ``bytes``/``bytearray`` or a string that is a data URI
+        or an ``http(s)`` URL.  Other bare strings are ambiguous (they may be
+        plain text), so they are not treated as images.
+        """
+        if value is None:
+            return False
+        if isinstance(value, (bytes, bytearray)):
+            return True
+        return isinstance(value, str) and value.startswith(
+            ("data:", "http://", "https://")
+        )
+
+    @staticmethod
+    def _normalize_image_value(value: Any) -> list[str]:
+        """Normalize an image value to a list of image URL / data URIs.
+
+        Accepts a single value or a list/tuple of values.  Each value may be
+        raw bytes (encoded as ``image/png``), a data URI, a URL, or a bare
+        base64 string (encoded as ``image/png``).
+        """
+        if isinstance(value, (list, tuple)):
+            return [
+                build_image_data_uri(item) for item in value if item is not None
+            ]
+        return [build_image_data_uri(value)]
+
+    def _has_images(self, data: dict[str, Any]) -> bool:
+        """Whether a dict tool result carries image data under ``image``."""
+        value = data.get("image")
+        if value is None:
+            return False
+        if isinstance(value, (list, tuple)):
+            return any(self._is_image_value(item) for item in value)
+        return self._is_image_value(value)
+
+    def _image_tool_content(
+        self,
+        image_value: Any,
+        function_name: str,
+        extra: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Build multimodal content parts for a tool response with images."""
+        text_payload = None
+        if isinstance(extra, dict):
+            rest = {key: val for key, val in extra.items() if key != "image"}
+            if rest:
+                text_payload = json.dumps(rest)
+        if text_payload is None:
+            text_payload = f"[tool '{function_name}' returned an image]"
+        parts: list[dict[str, Any]] = [{"type": "text", "text": text_payload}]
+        for url in self._normalize_image_value(image_value):
+            parts.append({"type": "image_url", "image_url": {"url": url}})
+        return parts
+
+    def _build_tool_message_content(self, result: Any, function_name: str) -> Any:
+        """Build the ``content`` field of a tool response message.
+
+        Plain results keep their legacy string form.  When the tool returned
+        image data — as raw ``bytes``, under an ``image`` key, or as a
+        data-URI string — the content becomes a list of OpenAI-compatible
+        content parts: a text part with the remaining result followed by one
+        ``image_url`` part per image, so the model actually receives the
+        images.
+        """
+        if isinstance(result, (bytes, bytearray)):
+            return self._image_tool_content([bytes(result)], function_name)
+        if isinstance(result, str):
+            try:
+                parsed = json.loads(result)
+            except (ValueError, TypeError):
+                return result
+            if isinstance(parsed, dict) and self._has_images(parsed):
+                return self._image_tool_content(
+                    parsed.get("image"), function_name, extra=parsed
+                )
+            return result
+        if isinstance(result, dict) and self._has_images(result):
+            return self._image_tool_content(
+                result.get("image"), function_name, extra=result
+            )
+        return json.dumps(result)
+
     def _run_api_call(
-        self, args: Dict[str, Any], stream: bool
-    ) -> Generator[Dict[str, Any], None, None]:
+        self, args: dict[str, Any], stream: bool
+    ) -> Generator[dict[str, Any], None, None]:
         """Perform a single chat-completion call.
 
         Yields stream passthrough events (``partial_content`` /
@@ -146,8 +236,8 @@ class Agent:
             return
 
         # Streaming branch
-        tool_calls_accumulator: Dict[int, Dict[str, Any]] = {}
-        tool_call_indices: List[int] = []
+        tool_calls_accumulator: dict[int, dict[str, Any]] = {}
+        tool_call_indices: list[int] = []
         content = ""
         reasoning = ""
 
@@ -167,16 +257,18 @@ class Agent:
                 }
 
             # Assistant content delta
-            if getattr(delta, "content", None):
-                content += delta.content
+            delta_content = getattr(delta, "content", None)
+            if delta_content:
+                content += delta_content
                 yield {
                     "role": "assistant",
-                    "content_delta": delta.content,
+                    "content_delta": delta_content,
                 }
 
             # Structured tool calls
-            if getattr(delta, "tool_calls", None):
-                for tool_call in delta.tool_calls:
+            delta_tool_calls = getattr(delta, "tool_calls", None)
+            if delta_tool_calls:
+                for tool_call in delta_tool_calls:
                     index = tool_call.index
                     if index not in tool_calls_accumulator:
                         tool_calls_accumulator[index] = {
@@ -212,7 +304,7 @@ class Agent:
         }
 
     def _execute_single_tool(
-        self, call: Dict[str, Any], session_id: str
+        self, call: dict[str, Any], session_id: str
     ) -> None:
         """Execute one tool call and persist the tool response message."""
         function_name = call["function"]["name"]
@@ -232,10 +324,8 @@ class Agent:
                 "tool_call_id": tool_call_id,
                 "role": "tool",
                 "name": function_name,
-                "content": (
-                    json.dumps(result)
-                    if not isinstance(result, str)
-                    else result
+                "content": self._build_tool_message_content(
+                    result, function_name
                 ),
             }
             self.store.save(tool_response, session_id)
@@ -253,17 +343,66 @@ class Agent:
             }
             self.store.save(tool_response, session_id)
 
+    def _merge_extra_params(
+        self, args: dict[str, Any], params: dict[str, Any] | None
+    ) -> None:
+        """Merge per-call params into create() arguments.
+
+        openai >= 3 strictly validates the keyword arguments of
+        ``chat.completions.create``, so provider-specific fields that could
+        be passed directly under openai 2.x (e.g. ``chat_template_kwargs``
+        on LM Studio or ``options`` on Ollama) are routed into
+        ``extra_body`` so they still reach the server's JSON body.
+        """
+        if not params:
+            return
+        try:
+            signature = inspect.signature(self.client.chat.completions.create)
+        except (TypeError, ValueError):
+            args.update(params)
+            return
+        if any(p.kind == p.VAR_KEYWORD for p in signature.parameters.values()):
+            args.update(params)
+            return
+        known = set(signature.parameters)
+        known_kwargs = {k: v for k, v in params.items() if k in known}
+        extra_body = {k: v for k, v in params.items() if k not in known}
+        if extra_body:
+            merged = dict(known_kwargs.get("extra_body") or {})
+            merged.update(extra_body)
+            known_kwargs["extra_body"] = merged
+        args.update(known_kwargs)
+
+    def _build_call_args(
+        self,
+        session_id: str,
+        with_tools: bool,
+        response_format_arg: dict[str, Any] | None,
+        base_params: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Build the kwargs for a single chat-completions call."""
+        args: dict[str, Any] = {
+            "messages": self.store.get_all(session_id),
+            "model": self.model,
+        }
+        if with_tools and self.tools:
+            args["tools"] = self.tools
+        if response_format_arg:
+            args["response_format"] = response_format_arg
+        self._merge_extra_params(args, base_params)
+        return args
+
     @streamable_response
     def generate(
         self,
         message: str = "",
-        image: bytes = None,
+        image: bytes | None = None,
         session_id: str = "default",
         stream: bool = True,
-        params: Dict[str, Any] = None,
-        tools: List[Callable] = None,
-        response_format: BaseModel = None,
-    ) -> Generator[Dict[str, Any], None, None]:
+        params: dict[str, Any] | None = None,
+        tools: list[Callable] | None = None,
+        response_format: type[BaseModel] | None = None,
+    ) -> Generator[dict[str, Any], None, None]:
         """Core generation with a full agentic tool-calling loop.
 
         The model is called repeatedly: on every round it has access to the
@@ -284,7 +423,7 @@ class Agent:
         self.store.save(msg_content, session_id)
 
         base_params = params or {}
-        response_format_arg = None
+        response_format_arg: dict[str, Any] | None = None
         if response_format:
             response_format_arg = {
                 "type": "json_schema",
@@ -293,23 +432,20 @@ class Agent:
                 },
             }
 
-        def build_args(with_tools: bool) -> Dict[str, Any]:
-            args: Dict[str, Any] = {
-                "messages": self.store.get_all(session_id),
-                "model": self.model,
-            }
-            if with_tools and self.tools:
-                args["tools"] = self.tools
-            if response_format_arg:
-                args["response_format"] = response_format_arg
-            args.update(base_params)
-            return args
-
         try:
             for _ in range(max(1, self.max_tool_rounds)):
                 # --- One API call (with tools available) ---
-                final = None
-                for event in self._run_api_call(build_args(True), stream):
+                final: dict[str, Any] = {
+                    "content": "",
+                    "reasoning": "",
+                    "tool_calls": [],
+                }
+                for event in self._run_api_call(
+                    self._build_call_args(
+                        session_id, True, response_format_arg, base_params
+                    ),
+                    stream,
+                ):
                     if "_final" in event:
                         final = event["_final"]
                     elif "content_delta" in event:
@@ -364,8 +500,15 @@ class Agent:
                     self._execute_single_tool(call, session_id)
 
             # --- Loop budget exhausted: force a final answer without tools ---
-            final = None
-            for event in self._run_api_call(build_args(False), stream):
+            final = {
+                "content": "",
+                "reasoning": "",
+                "tool_calls": [],
+            }
+            for event in self._run_api_call(
+                self._build_call_args(session_id, False, response_format_arg, base_params),
+                stream,
+            ):
                 if "_final" in event:
                     final = event["_final"]
                 elif "content_delta" in event:
@@ -385,4 +528,4 @@ class Agent:
 
         except Exception as e:
             print(traceback.format_exc())
-            raise EmptyPayload(f"API error: {e}")
+            raise EmptyPayload(f"API error: {e}") from e
